@@ -90,6 +90,14 @@ public Action:Command_Heartbeat(client, args)
 	return Plugin_Handled;
 }
 
+public Action:Command_PrintIP(client, args)
+{
+	new String:serverIP[16];
+	Steam_GetPublicIP(serverIP, 16);
+	PrintToChat(client, "[SM] Server IP Address: %s.", serverIP);
+	return Plugin_Handled;
+}
+
 public Action:Command_GroupStatus(client, args)
 {
 	if (args != 2) {
