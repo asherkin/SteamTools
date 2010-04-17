@@ -38,7 +38,6 @@ SMEXT_LINK(&g_SteamTools);
 
 SH_DECL_HOOK1_void(IServerGameDLL, GameFrame, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK0(ISteamMasterServerUpdater001, WasRestartRequested, SH_NOATTRIB, 0, bool);
-SH_DECL_HOOK6_void(ISteamGameServer008, UpdateServerStatus,	SH_NOATTRIB, 0, int, int, int, const char *, const char *, const char *);
 
 ConVar GroupSteamID("steamtools_version", SMEXT_CONF_VERSION, FCVAR_NOTIFY|FCVAR_REPLICATED, SMEXT_CONF_DESCRIPTION);
 
@@ -61,14 +60,11 @@ int g_UpdateServerStatusHookID = 0;
 IForward * g_pForwardGroupStatusResult = NULL;
 IForward * g_pForwardRestartRequested = NULL;
 
-bool g_ReportBotPlayers = true;
-
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
 	{ "Steam_RequestGroupStatus",	RequestGroupStatus },
 	{ "Steam_ForceHeartbeat",		ForceHeartbeat },
 	{ "Steam_IsVACEnabled",			IsVACEnabled },
-	{ "Steam_ReportBotPlayers",		ReportBotPlayers },
 	{ "Steam_GetPublicIP",			GetPublicIP },
 	{ NULL,							NULL }
 };
@@ -174,16 +170,6 @@ bool Hook_WasRestartRequested()
 	RETURN_META_VALUE(MRES_SUPERCEDE, bWasRestartRequested);
 }
 
-void Hook_UpdateServerStatus(int cPlayers, int cPlayersMax, int cBotPlayers, const char *pchServerName, const char *pSpectatorServerName, const char *pchMapName)
-{
-	if (g_ReportBotPlayers)
-	{
-		RETURN_META(MRES_IGNORED);
-	} else {
-		RETURN_META_NEWPARAMS(MRES_HANDLED, &ISteamGameServer008::UpdateServerStatus, (cPlayers, cPlayersMax, 0, pchServerName, pSpectatorServerName, pchMapName));
-	}
-}
-
 bool SteamTools::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late)
 {
 	GET_V_IFACE_CURRENT(GetServerFactory, g_pServerGameDLL, IServerGameDLL, INTERFACEVERSION_SERVERGAMEDLL);
@@ -250,17 +236,6 @@ static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params)
 static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params)
 {
 	return g_pSteamGameServer->Secure();
-}
-
-static cell_t ReportBotPlayers(IPluginContext *pContext, const cell_t *params)
-{
-	if (params[1] > 0) 
-	{
-		g_ReportBotPlayers = true;
-	} else {
-		g_ReportBotPlayers = false;
-	}
-	return 0;
 }
 
 static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params)

@@ -117,7 +117,6 @@ void Hook_UpdateServerStatus(int cPlayers, int cPlayersMax, int cBotPlayers, con
 static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params);
 static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params);
 static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params);
-static cell_t ReportBotPlayers(IPluginContext *pContext, const cell_t *params);
 static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params);
 CSteamID SteamIDToCSteamID(const char *steamID);
 

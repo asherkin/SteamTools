@@ -35,8 +35,6 @@
 
 #define PLUGIN_VERSION "0.1.0"
 
-new Handle:g_BotConVar;
-
 public Plugin:myinfo = {
 	name        = "SteamTools Tester",
 	author      = "Asher Baker (asherkin)",
@@ -50,19 +48,7 @@ public OnPluginStart()
 	RegAdminCmd("sm_printvacstatus", Command_VACStatus, ADMFLAG_ROOT, "Shows the current VAC status.");
 	RegAdminCmd("sm_forceheartbeat", Command_Heartbeat, ADMFLAG_ROOT, "Sends a heartbeat to the Steam Master Servers.");
 	RegAdminCmd("sm_groupstatus", Command_GroupStatus, ADMFLAG_ROOT, "Requests a clients membership status in a Steam Community Group.");
-	g_BotConVar = CreateConVar("sm_reportbots", "1", "Report bot players to the Steam Master Servers.", 0, true, 0.0, true, 1.0);
 	HookConVarChange(g_BotConVar, Hook_BotReportingChanged);
-}
-
-public Hook_BotReportingChanged(Handle:convar, const String:oldValue[], const String:newValue[])
-{
-	new conVarValue = StringToInt(newValue);
-	if (conVarValue > 0)
-	{
-		Steam_ReportBotPlayers(true);
-	} else {
-		Steam_ReportBotPlayers(false);
-	}
 }
 
 public Action:Steam_RestartRequested()
