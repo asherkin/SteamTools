@@ -57,7 +57,12 @@ public OnPluginStart()
 public Hook_BotReportingChanged(Handle:convar, const String:oldValue[], const String:newValue[])
 {
 	new conVarValue = StringToInt(newValue);
-	Steam_ReportBotPlayers(conVarValue);
+	if (conVarValue > 0)
+	{
+		Steam_ReportBotPlayers(true);
+	} else {
+		Steam_ReportBotPlayers(false);
+	}
 }
 
 public Action:Steam_RestartRequested()
@@ -66,7 +71,7 @@ public Action:Steam_RestartRequested()
 	return Plugin_Continue;
 }
 
-public Action:Steam_GroupStatusResult(String:clientAuthString, bool:groupMember)
+public Action:Steam_GroupStatusResult(String:clientAuthString[], bool:groupMember)
 {
 	PrintToChatAll("[SM] %s is %s member in group.", clientAuthString, groupMember?"a":"not a");
 	return Plugin_Continue;
@@ -109,7 +114,7 @@ public Action:Command_GroupStatus(client, args)
 			client,
 			target_list,
 			MAXPLAYERS,
-			COMMAND_FILTER_ALL,
+			COMMAND_FILTER_NO_IMMUNITY,
 			target_name,
 			sizeof(target_name),
 			tn_is_ml)) <= 0)
@@ -123,7 +128,7 @@ public Action:Command_GroupStatus(client, args)
 	for (new i = 0; i < target_count; i++)
 	{
 		GetClientAuthString(target_list[i], clientAuthString, 32);
-		didAnyRequestsWork = Steam_RequestGroupStatus(clientAuthString, StringToInt(arg2)
+		didAnyRequestsWork = Steam_RequestGroupStatus(clientAuthString, StringToInt(arg2));
 	}
 
 	PrintToChat(client, "[SM] %s.", didAnyRequestsWork?"Group status requested":"Error in requesting group status, not connected to Steam");
