@@ -55,7 +55,6 @@ GetUserFn g_GameServerSteamUser;
 
 int g_GameFrameHookID = 0;
 int g_WasRestartRequestedHookID = 0;
-int g_UpdateServerStatusHookID = 0;
 
 IForward * g_pForwardGroupStatusResult = NULL;
 IForward * g_pForwardRestartRequested = NULL;
@@ -148,7 +147,6 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 	g_GameFrameHookID = SH_ADD_HOOK(IServerGameDLL, GameFrame, g_pServerGameDLL, SH_STATIC(Hook_GameFrame), true);
 	g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), true);
-	g_UpdateServerStatusHookID = SH_ADD_HOOK(ISteamGameServer008, UpdateServerStatus, g_pSteamGameServer, SH_STATIC(Hook_UpdateServerStatus), false);
 
 	g_pShareSys->AddNatives(myself, g_ExtensionNatives);
 	g_pShareSys->RegisterLibrary(myself, "SteamTools");
@@ -209,11 +207,6 @@ void SteamTools::SDK_OnUnload()
 	{
 		SH_REMOVE_HOOK_ID(g_WasRestartRequestedHookID);
 		g_WasRestartRequestedHookID = 0;
-	}
-	if (g_UpdateServerStatusHookID != 0)
-	{
-		SH_REMOVE_HOOK_ID(g_UpdateServerStatusHookID);
-		g_UpdateServerStatusHookID = 0;
 	}
 
 	g_pForwards->ReleaseForward(g_pForwardGroupStatusResult);
