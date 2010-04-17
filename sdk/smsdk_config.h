@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * SteamTools - Exposes some SteamClient functions to SourceMod plugins.
- * Copyright (C) 2010 Asher Baker (Asherkin).  All rights reserved.
+ * Copyright (C) 2010 Asher Baker (asherkin).  All rights reserved.
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -38,7 +38,7 @@
 #define SMEXT_CONF_NAME			"SteamTools"
 #define SMEXT_CONF_DESCRIPTION	"Exposes some SteamClient functions to SourceMod plugins."
 #define SMEXT_CONF_VERSION		"0.1.0"
-#define SMEXT_CONF_AUTHOR		"Asherkin"
+#define SMEXT_CONF_AUTHOR		"Asher Baker (asherkin)"
 #define SMEXT_CONF_URL			"http://limetech.org/"
 #define SMEXT_CONF_LOGTAG		"STEAMTOOLS"
 #define SMEXT_CONF_LICENSE		"GPL"

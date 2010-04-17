@@ -12,6 +12,9 @@
     <Filter Include="SourceMod SDK">
       <UniqueIdentifier>{31958233-BB2D-4e41-A8F9-CE8A4684F436}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Pawn">
+      <UniqueIdentifier>{3fdbe48b-78c6-4846-a0ee-45a9d6397095}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extension.cpp">
@@ -31,5 +34,13 @@
     <ClInclude Include="..\sdk\smsdk_ext.h">
       <Filter>SourceMod SDK</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\steamtools.inc">
+      <Filter>Pawn</Filter>
+    </None>
+    <None Include="..\steamtools.sp">
+      <Filter>Pawn</Filter>
+    </None>
   </ItemGroup>
 </Project>

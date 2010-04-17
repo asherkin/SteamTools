@@ -120,6 +120,10 @@
     <ClInclude Include="..\sdk\smsdk_config.h" />
     <ClInclude Include="..\sdk\smsdk_ext.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\steamtools.inc" />
+    <None Include="..\steamtools.sp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

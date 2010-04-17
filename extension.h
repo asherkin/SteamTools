@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * SteamTools - Exposes some SteamClient functions to SourceMod plugins.
- * Copyright (C) 2010 Asher Baker (Asherkin).  All rights reserved.
+ * Copyright (C) 2010 Asher Baker (asherkin).  All rights reserved.
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
