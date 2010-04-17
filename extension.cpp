@@ -104,11 +104,6 @@ void Hook_GameFrame(bool simulating)
 		g_GameServerSteamUser = (GetUserFn)GetProcAddress(steamapi, "SteamGameServer_GetHSteamUser");
 #elif defined _LINUX
 		void* steamclient_library = dlopen("steamclient_linux.so", RTLD_LAZY);
-		if(steamclient_library == NULL)
-		{
-			// report error ...
-			return;
-		}
 
 		CreateInterfaceFn steamclient = (CreateInterfaceFn)dlsym(steamclient_library, "CreateInterface");
 		ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
@@ -116,11 +111,6 @@ void Hook_GameFrame(bool simulating)
 		dlclose(steamclient_library);
 
 		void* steam_api_library = dlopen("libsteam_api_linux.so", RTLD_LAZY);
-		if(steam_api_library == NULL)
-		{
-			// report error ...
-			return;
-		}
 
 		g_GameServerSteamPipe = (GetPipeFn)dlsym(steam_api_library, "SteamGameServer_GetHSteamPipe");
 		g_GameServerSteamUser = (GetUserFn)dlsym(steam_api_library, "SteamGameServer_GetHSteamUser");
