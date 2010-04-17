@@ -51,6 +51,7 @@
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release - Orange Box Valve|Win32'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release - Orange Box Valve|Win32'" />
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug - Orange Box Valve|Win32'">$(ProjectName).ext.2.ep2v</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release - Orange Box Valve|Win32'">$(ProjectName).ext.2.ep2v</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - Orange Box Valve|Win32'">
     <ClCompile>
@@ -84,7 +85,7 @@
     <ClCompile>
       <AdditionalOptions>/MP /D SE_EPISODEONE=1 /D SE_DARKMESSIAH=2 /D SE_ORANGEBOX=3 /D SE_ORANGEBOXVALVE=4 /D SE_LEFT4DEAD=5 /D SE_LEFT4DEAD2=6 %(AdditionalOptions)</AdditionalOptions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..;..\sdk;D:\smexts\sourcemod\public\;D:\smexts\sourcemod\public\sourcepawn;$(HL2SDKOBVALVE)\game\shared\;$(HL2SDKOBVALVE)\game\server\;$(HL2SDKOBVALVE)\public;$(HL2SDKOBVALVE)\public\engine;$(HL2SDKOBVALVE)\public\game\server;$(HL2SDKOBVALVE)\public\tier0;$(HL2SDKOBVALVE)\public\tier1;$(MMSOURCE18)\core;$(MMSOURCE18)\core\sourcehook;D:\opensteamworks\Open Steamworks;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..;..\sdk;$(SOURCEMOD12)\public\;$(SOURCEMOD12)\public\sourcepawn;$(HL2SDKOBVALVE)\game\shared\;$(HL2SDKOBVALVE)\game\server\;$(HL2SDKOBVALVE)\public;$(HL2SDKOBVALVE)\public\engine;$(HL2SDKOBVALVE)\public\game\server;$(HL2SDKOBVALVE)\public\tier0;$(HL2SDKOBVALVE)\public\tier1;$(MMSOURCE17)\core;$(MMSOURCE17)\core\sourcehook;D:\opensteamworks\Open Steamworks;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;SDK_EXPORTS;_CRT_SECURE_NO_DEPRECATE;SOURCEMOD_BUILD;SOURCE_ENGINE=4;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
@@ -98,7 +99,7 @@
     <Link>
       <AdditionalDependencies>$(HL2SDKOBVALVE)\lib\public\tier0.lib;$(HL2SDKOBVALVE)\lib\public\tier1.lib;$(HL2SDKOBVALVE)\lib\public\vstdlib.lib;D:\opensteamworks\steamclient.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ShowProgress>LinkVerbose</ShowProgress>
-      <OutputFile>$(OutDir)grouplock.ext.2.ep2v.dll</OutputFile>
+      <OutputFile>$(OutDir)$(ProjectName).ext.2.ep2v.dll</OutputFile>
       <IgnoreSpecificDefaultLibraries>LIBC;LIBCD;LIBCMTD;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>

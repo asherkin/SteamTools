@@ -174,13 +174,13 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 bool Hook_WasRestartRequested()
 {
-	bool WasRestartRequested;
-	if (WasRestartRequested = g_pSteamMasterServerUpdater->WasRestartRequested())
+	bool bWasRestartRequested;
+	if (bWasRestartRequested = g_pSteamMasterServerUpdater->WasRestartRequested())
 	{
 		cell_t cellResults = 0;
 		g_pForwardRestartRequested->Execute(&cellResults);
 	}
-	RETURN_META_VALUE(MRES_SUPERCEDE, WasRestartRequested);
+	RETURN_META_VALUE(MRES_SUPERCEDE, bWasRestartRequested);
 }
 
 void Hook_UpdateServerStatus(int cPlayers, int cPlayersMax, int cBotPlayers, const char *pchServerName, const char *pSpectatorServerName, const char *pchMapName)
@@ -247,10 +247,7 @@ static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
 {
 	char * strUserID;
 	pContext->LocalToString(params[1], &strUserID);
-
-	g_pSteamGameServer->RequestUserGroupStatus(SteamIDToCSteamID(strUserID), CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));
-
-	return 0;
+	return g_pSteamGameServer->RequestUserGroupStatus(SteamIDToCSteamID(strUserID), CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));;
 }
 
 static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params)
@@ -266,7 +263,12 @@ static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params)
 
 static cell_t ReportBotPlayers(IPluginContext *pContext, const cell_t *params)
 {
-	g_ReportBotPlayers = params[1];
+	if (params[1] > 0) 
+	{
+		g_ReportBotPlayers = true;
+	} else {
+		g_ReportBotPlayers = false;
+	}
 	return 0;
 }
 
