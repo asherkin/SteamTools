@@ -1,5 +1,4 @@
 /**
- * vim: set ts=4 :
  * =============================================================================
  * SourceMod Base Extension Code
  * Copyright (C) 2004-2008 AlliedModders LLC.  All rights reserved.
@@ -25,8 +24,7 @@
  * this exception to all derivative works.  AlliedModders LLC defines further
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
- *
- * Version: $Id$
+ * =============================================================================
  */
 
 #include <stdio.h>

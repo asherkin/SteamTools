@@ -1,4 +1,4 @@
-/*
+/**
  * =============================================================================
  * SteamTools - Exposes some SteamClient functions to SourceMod plugins.
  * Copyright (C) 2010 Asher Baker (asherkin).  All rights reserved.
@@ -24,6 +24,17 @@
  * this exception to all derivative works.  AlliedModders LLC defines further
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
+ * =============================================================================
+ */
+
+/**
+ * =============================================================================
+ * Attributions & Thanks:
+ * =============================================================================
+ * AzuiSleet	-	Wrote the original example code to acquire the SteamClient
+ *					factory.
+ * psychonic	-	Checked over the code for me.
+ * =============================================================================
  */
 
 #include "extension.h"
@@ -128,21 +139,14 @@ void Hook_GameFrame(bool simulating)
 
 bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 {
-#if SOURCE_ENGINE != SE_ORANGEBOXVALVE
-	g_pSM->Format(error, maxlen, "This extension is only supported on Team Fortress 2.");
-	return false;
-#endif
 
 #if !defined _WIN32 && !defined _LINUX
-	#error This extension is only supported on Windows and Linux.
-	g_pSM->Format(error, maxlen, "This extension is only supported on Windows and Linux.");
-	return false;
+#error This extension is only supported on Windows and Linux.
 #endif
 
 	if (strcmp(g_pSM->GetGameFolderName(), "tf") != 0)
 	{
-		g_pSM->Format(error, maxlen, "This extension is only supported on Team Fortress 2.");
-		return false;
+		g_pSM->LogMessage(myself, "Functionality is only guaranteed on Team Fortress 2, and may break features of other mods.");
 	}
 
 	g_GameFrameHookID = SH_ADD_HOOK(IServerGameDLL, GameFrame, g_pServerGameDLL, SH_STATIC(Hook_GameFrame), true);
