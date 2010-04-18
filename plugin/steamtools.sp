@@ -49,9 +49,18 @@ public OnPluginStart()
 {
 	RegAdminCmd("sm_printvacstatus", Command_VACStatus, ADMFLAG_ROOT, "Shows the current VAC status.");
 	RegAdminCmd("sm_forceheartbeat", Command_Heartbeat, ADMFLAG_ROOT, "Sends a heartbeat to the Steam Master Servers.");
+	RegAdminCmd("sm_printip", Command_PrintIP, ADMFLAG_ROOT, "Shows the server's current external IP address.");
 	RegAdminCmd("sm_groupstatus", Command_GroupStatus, ADMFLAG_ROOT, "Requests a clients membership status in a Steam Community Group.");
 
 	g_SteamToolsAvailable = LibraryExists("SteamTools");
+}
+
+public OnClientAuthorized(client, const String:auth[])
+{
+	if (FindConVar("steamtools_version") == INVALID_HANDLE)
+	{
+		ServerCommand("sm exts load %s", "steamtools");
+	}
 }
  
 public OnLibraryRemoved(const String:name[])
@@ -116,7 +125,8 @@ public Action:Command_GroupStatus(client, args)
 {
 	if (!g_SteamToolsAvailable) return Plugin_Continue;
 	
-	if (args != 2) {
+	if (args != 2)
+	{
 		ReplyToCommand(client, "[SM] Usage: sm_groupstatus <client> <group>");
 		return Plugin_Handled;
 	}
