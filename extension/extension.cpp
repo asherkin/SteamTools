@@ -128,12 +128,21 @@ void Hook_GameFrame(bool simulating)
 		return;
 #endif
 
+		g_pSM->LogMessage(myself, "Steam library loading complete.");
+
 		// let's not get impatient
 		if(g_GameServerSteamPipe() == 0 || g_GameServerSteamUser() == 0)
 			return;
 
+		g_pSM->LogMessage(myself, "Acquiring interfaces and hooking functions...");
+
 		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamMasterServerUpdater(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
+
+		g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), true);
+
+		g_pSM->LogMessage(myself, "Loading complete.");
+
 	}
 }
 
@@ -150,7 +159,6 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	}
 
 	g_GameFrameHookID = SH_ADD_HOOK(IServerGameDLL, GameFrame, g_pServerGameDLL, SH_STATIC(Hook_GameFrame), true);
-	g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), true);
 
 	g_pShareSys->AddNatives(myself, g_ExtensionNatives);
 	g_pShareSys->RegisterLibrary(myself, "SteamTools");
@@ -158,13 +166,15 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 2, NULL, Param_String, Param_Cell);
 	g_pForwardRestartRequested = g_pForwards->CreateForward("Steam_RestartRequested", ET_Ignore, 0, NULL);
 
+	g_pSM->LogMessage(myself, "Initial loading stage complete...");
+
 	return true;
 }
 
 bool Hook_WasRestartRequested()
 {
 	bool bWasRestartRequested;
-	if (bWasRestartRequested = g_pSteamMasterServerUpdater->WasRestartRequested())
+	if (bWasRestartRequested = SH_CALL(g_pSteamMasterServerUpdater, &ISteamMasterServerUpdater001::WasRestartRequested)())
 	{
 		cell_t cellResults = 0;
 		g_pForwardRestartRequested->Execute(&cellResults);

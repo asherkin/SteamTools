@@ -31,7 +31,6 @@
 
 #include <sourcemod>
 
-#define REQUIRE_EXTENSIONS
 #include <steamtools>
 
 #define PLUGIN_VERSION "0.1.0"
@@ -44,11 +43,31 @@ public Plugin:myinfo = {
 	url         = "http://limetech.org/"
 };
 
+new bool:g_SteamToolsAvailable = false;
+
 public OnPluginStart()
 {
 	RegAdminCmd("sm_printvacstatus", Command_VACStatus, ADMFLAG_ROOT, "Shows the current VAC status.");
 	RegAdminCmd("sm_forceheartbeat", Command_Heartbeat, ADMFLAG_ROOT, "Sends a heartbeat to the Steam Master Servers.");
 	RegAdminCmd("sm_groupstatus", Command_GroupStatus, ADMFLAG_ROOT, "Requests a clients membership status in a Steam Community Group.");
+
+	g_SteamToolsAvailable = LibraryExists("SteamTools");
+}
+ 
+public OnLibraryRemoved(const String:name[])
+{
+	if (StrEqual(name, "SteamTools"))
+	{
+		g_SteamToolsAvailable = false;
+	}
+}
+ 
+public OnLibraryAdded(const String:name[])
+{
+	if (StrEqual(name, "SteamTools"))
+	{
+		g_SteamToolsAvailable = true;
+	}
 }
 
 public Action:Steam_RestartRequested()
@@ -65,27 +84,35 @@ public Action:Steam_GroupStatusResult(String:clientAuthString[], bool:groupMembe
 
 public Action:Command_VACStatus(client, args)
 {
-	PrintToChat(client, "[SM] VAC is %s.", Steam_IsVACEnabled()?"active":"not active");
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
+	ReplyToCommand(client, "[SM] VAC is %s.", Steam_IsVACEnabled()?"active":"not active");
 	return Plugin_Handled;
 }
 
 public Action:Command_Heartbeat(client, args)
 {
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
 	Steam_ForceHeartbeat();
-	PrintToChat(client, "[SM] Heartbeat Sent.");
+	ReplyToCommand(client, "[SM] Heartbeat Sent.");
 	return Plugin_Handled;
 }
 
 public Action:Command_PrintIP(client, args)
 {
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
 	new String:serverIP[16];
 	Steam_GetPublicIP(serverIP, 16);
-	PrintToChat(client, "[SM] Server IP Address: %s.", serverIP);
+	ReplyToCommand(client, "[SM] Server IP Address: %s.", serverIP);
 	return Plugin_Handled;
 }
 
 public Action:Command_GroupStatus(client, args)
 {
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
 	if (args != 2) {
 		ReplyToCommand(client, "[SM] Usage: sm_groupstatus <client> <group>");
 		return Plugin_Handled;
@@ -125,7 +152,7 @@ public Action:Command_GroupStatus(client, args)
 		didAnyRequestsWork = Steam_RequestGroupStatus(clientAuthString, StringToInt(arg2));
 	}
 
-	PrintToChat(client, "[SM] %s.", didAnyRequestsWork?"Group status requested":"Error in requesting group status, not connected to Steam");
+	ReplyToCommand(client, "[SM] %s.", didAnyRequestsWork?"Group status requested":"Error in requesting group status, not connected to Steam");
 	 
 	return Plugin_Handled;
 }

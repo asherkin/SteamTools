@@ -121,8 +121,8 @@
     <ClInclude Include="..\sdk\smsdk_ext.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\steamtools.inc" />
-    <None Include="..\steamtools.sp" />
+    <None Include="..\..\plugin\steamtools.inc" />
+    <None Include="..\..\plugin\steamtools.sp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

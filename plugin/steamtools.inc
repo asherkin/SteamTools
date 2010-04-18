@@ -39,14 +39,18 @@ native Steam_GetPublicIP(String:strDest[], iDestSize);
 forward Action:Steam_GroupStatusResult(String:clientAuthString[], bool:groupMember);
 forward Action:Steam_RestartRequested();
 
-public Extension:__ext_steamtools = 
+public Extension:__ext_SteamTools = 
 {
 	name = "SteamTools",
 	file = "steamtools.ext.2.ep2v",
 	autoload = 0,
-	#if defined REQUIRE_EXTENSIONS
-		required = 1,
-	#else
-		required = 0,
-	#endif
+	required = 0,
+}
+
+public __ext_SteamTools_SetNTVOptional()
+{
+	MarkNativeAsOptional("Steam_RequestGroupStatus");
+	MarkNativeAsOptional("Steam_ForceHeartbeat");
+	MarkNativeAsOptional("Steam_IsVACEnabled");
+	MarkNativeAsOptional("Steam_GetPublicIP");
 }

@@ -36,10 +36,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\steamtools.inc">
+    <None Include="..\..\plugin\steamtools.inc">
       <Filter>Pawn</Filter>
     </None>
-    <None Include="..\steamtools.sp">
+    <None Include="..\..\plugin\steamtools.sp">
       <Filter>Pawn</Filter>
     </None>
   </ItemGroup>
