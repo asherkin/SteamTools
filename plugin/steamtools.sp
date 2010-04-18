@@ -66,7 +66,10 @@ public OnLibraryAdded(const String:name[])
 {
 	if (StrEqual(name, "SteamTools"))
 	{
-		g_SteamToolsAvailable = true;
+		new String:myFilename[64];
+		new Handle:myself = GetMyHandle();
+		GetPluginFilename(myself, myFilename, 64);
+		ServerCommand("sm plugins reload %s", myFilename);
 	}
 }
 
