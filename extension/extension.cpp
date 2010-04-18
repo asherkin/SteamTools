@@ -281,7 +281,7 @@ CSteamID SteamIDToCSteamID(const char *steamID)
 		}
 	}
 
-    uint64 i64friendID = (uint64)iAuthID * 2;
+	uint64 i64friendID = (uint64)iAuthID * 2;
 	uint64 constConvert = 76561197960265728ULL;
 	i64friendID += constConvert + iServer;
 
