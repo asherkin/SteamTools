@@ -2,14 +2,14 @@
 # Makefile written by David "BAILOPAN" Anderson
 # Modified by Asher "asherkin" Baker for the "steamtools" project
 
-SMSDK = ../sdks/sourcemod-1.2
+SMSDK = ../../sdks/sourcemod-1.2
 SRCDS_BASE = /home/hlds/tf2
-HL2SDK_ORIG = ../sdks/hl2sdk
-HL2SDK_OB = ../sdks/hl2sdk-ob
-HL2SDK_OB_VALVE = ../sdks/hl2sdk-ob-valve
-HL2SDK_L4D = ../sdks/hl2sdk-l4d
-HL2SDK_L4D2 = ../sdks/hl2sdk-l4d2
-MMSOURCE18 = ../sdks/mmsource-1.7
+HL2SDK_ORIG = ../../sdks/hl2sdk
+HL2SDK_OB = ../../sdks/hl2sdk-ob
+HL2SDK_OB_VALVE = ../../sdks/hl2sdk-ob-valve
+HL2SDK_L4D = ../../sdks/hl2sdk-l4d
+HL2SDK_L4D2 = ../../sdks/hl2sdk-l4d2
+MMSOURCE18 = ../../sdks/mmsource-1.7
 
 #####################################
 ### EDIT BELOW FOR OTHER PROJECTS ###
@@ -64,7 +64,6 @@ ifeq "$(ENGINE)" "orangeboxvalve"
 	CFLAGS += -DSOURCE_ENGINE=4
 	METAMOD = $(MMSOURCE18)/core
 	INCLUDE += -I$(HL2SDK)/public/game/server
-	INCLUDE += -I../osw/Open\ Steamworks
 	SRCDS = $(SRCDS_BASE)/orangebox
 	LIB_SUFFIX = i486
 	override ENGSET = true
@@ -91,6 +90,8 @@ ifeq "$(ENGINE)" "left4dead2"
 	LIB_SUFFIX = linux
 	override ENGSET = true
 endif
+
+	INCLUDE += -I../../osw/Open\ Steamworks
 
 ifeq "$(USEMETA)" "true"
 	LINK_HL2 = $(HL2LIB)/tier1_i486.a vstdlib_$(LIB_SUFFIX).so tier0_$(LIB_SUFFIX).so
@@ -156,6 +157,8 @@ all: check
 		ln -sf $(HL2LIB)/vstdlib_$(LIB_SUFFIX).so; \
 		ln -sf $(HL2LIB)/tier0_$(LIB_SUFFIX).so; \
 	fi
+	ln -sf $(SRCDS)/bin/libsteam_api_linux.so; \
+	ln -sf $(SRCDS)/bin/steamclient_linux.so; \
 	$(MAKE) -f Makefile extension
 
 check:
