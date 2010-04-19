@@ -31,9 +31,8 @@
  * =============================================================================
  * Attributions & Thanks:
  * =============================================================================
- * AzuiSleet	-	Wrote the original example code to acquire the SteamClient
- *					factory.
- * psychonic	-	Checked over the code for me.
+ * AzuiSleet - Wrote the original example code to acquire the SteamClient
+ *             factory.
  * =============================================================================
  */
 
@@ -248,26 +247,20 @@ static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params)
 static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params)
 {
 	uint32 ipAddress = g_pSteamGameServer->GetPublicIP();
-	unsigned char octet[4]  = {255,255,255,255};
+	unsigned char octet[4]  = {0,0,0,0};
 
 	for (int i=0; i<4; i++)
 	{
 		octet[i] = ( ipAddress >> (i*8) ) & 0xFF;
 	}
 
-	char * strSource = new char[16];
-	g_pSM->Format(strSource, 16, "%d.%d.%d.%d", octet[3], octet[2], octet[1], octet[0]);
-	char * strDestiny; pContext->LocalToString(params[1], &strDestiny);
-	int iSourceSize = strlen(strSource);
-	int iDestinySize = params[2];
+	cell_t *addr;
+	pContext->LocalToPhysAddr(params[1], &addr);
 
-	// Perform bounds checking
-	if (iSourceSize >= iDestinySize)	iSourceSize = iDestinySize-1;
-	else								iSourceSize = iDestinySize;
-
-	// Copy
-	memmove(strDestiny, strSource, iSourceSize);
-	strDestiny[iSourceSize] = '\0';
+	addr[0] = octet[3];
+	addr[1] = octet[2];
+	addr[2] = octet[1];
+	addr[3] = octet[0];
 
 	return 0;
 }

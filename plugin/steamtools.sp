@@ -43,6 +43,8 @@ public Plugin:myinfo = {
 	url         = "http://limetech.org/"
 };
 
+// START Loading Code
+
 new bool:g_SteamToolsAvailable = false;
 
 public OnPluginStart()
@@ -53,14 +55,6 @@ public OnPluginStart()
 	RegAdminCmd("sm_groupstatus", Command_GroupStatus, ADMFLAG_ROOT, "Requests a clients membership status in a Steam Community Group.");
 
 	g_SteamToolsAvailable = LibraryExists("SteamTools");
-}
-
-public OnClientAuthorized(client, const String:auth[])
-{
-	if (FindConVar("steamtools_version") == INVALID_HANDLE)
-	{
-		ServerCommand("sm exts load %s", "steamtools");
-	}
 }
  
 public OnLibraryRemoved(const String:name[])
@@ -81,6 +75,16 @@ public OnLibraryAdded(const String:name[])
 		ServerCommand("sm plugins reload %s", myFilename);
 	}
 }
+
+public OnClientAuthorized(client, const String:auth[])
+{
+	if (!g_SteamToolsAvailable)
+	{
+		ServerCommand("sm exts load %s", "steamtools");
+	}
+}
+
+// END Loading Code
 
 public Action:Steam_RestartRequested()
 {
@@ -115,9 +119,9 @@ public Action:Command_PrintIP(client, args)
 {
 	if (!g_SteamToolsAvailable) return Plugin_Continue;
 	
-	new String:serverIP[16];
-	Steam_GetPublicIP(serverIP, 16);
-	ReplyToCommand(client, "[SM] Server IP Address: %s.", serverIP);
+	new octets[4];
+	Steam_GetPublicIP(octets);
+	ReplyToCommand(client, "[SM] Server IP Address: %d.%d.%d.%d", octets[0], octets[1], octets[2], octets[3]);
 	return Plugin_Handled;
 }
 
@@ -157,15 +161,15 @@ public Action:Command_GroupStatus(client, args)
 		return Plugin_Handled;
 	}
 
-	new bool:didAnyRequestsWork = false;
+	new bool:didLastRequestWork = false;
  
 	for (new i = 0; i < target_count; i++)
 	{
 		GetClientAuthString(target_list[i], clientAuthString, 32);
-		didAnyRequestsWork = Steam_RequestGroupStatus(clientAuthString, StringToInt(arg2));
+		didLastRequestWork = Steam_RequestGroupStatus(clientAuthString, StringToInt(arg2));
 	}
 
-	ReplyToCommand(client, "[SM] %s.", didAnyRequestsWork?"Group status requested":"Error in requesting group status, not connected to Steam");
+	ReplyToCommand(client, "[SM] %s.", didLastRequestWork?"Group status requested":"Error in requesting group status, not connected to Steam");
 	 
 	return Plugin_Handled;
 }
