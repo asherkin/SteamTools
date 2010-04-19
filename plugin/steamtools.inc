@@ -36,7 +36,7 @@ native bool:Steam_RequestGroupStatus(String:clientAuthString[], groupAccountID);
 native Steam_ForceHeartbeat();
 native bool:Steam_IsVACEnabled();
 native Steam_GetPublicIP(octets[4]);
-forward Action:Steam_GroupStatusResult(String:clientAuthString[], bool:groupMember);
+forward Action:Steam_GroupStatusResult(String:clientAuthString[64], bool:groupMember);
 forward Action:Steam_RestartRequested();
 
 public Extension:__ext_SteamTools = 

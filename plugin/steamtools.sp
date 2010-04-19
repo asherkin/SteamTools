@@ -94,11 +94,11 @@ public Action:Steam_RestartRequested()
 	return Plugin_Continue;
 }
 
-public Action:Steam_GroupStatusResult(String:clientAuthString[], bool:groupMember)
+public Action:Steam_GroupStatusResult(String:clientAuthString[64], bool:groupMember)
 {
 	new String:authBuffer[64];
 	
-	for (new i = 0; i < MaxClients; i++)
+	for (new i = 1; i < MaxClients; i++)
 	{
 		GetClientAuthString(i, authBuffer, 64);
 		if (StrEqual(clientAuthString, authBuffer))
@@ -153,7 +153,7 @@ public Action:Command_GroupStatus(client, args)
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
 
-	new String:clientAuthString[32];
+	new String:clientAuthString[64];
  
 	new String:target_name[MAX_TARGET_LENGTH];
 	new target_list[MAXPLAYERS], target_count;
@@ -177,7 +177,7 @@ public Action:Command_GroupStatus(client, args)
  
 	for (new i = 0; i < target_count; i++)
 	{
-		GetClientAuthString(target_list[i], clientAuthString, 32);
+		GetClientAuthString(target_list[i], clientAuthString, 64);
 		didLastRequestWork = Steam_RequestGroupStatus(clientAuthString, StringToInt(arg2));
 	}
 
