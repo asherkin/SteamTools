@@ -49,6 +49,8 @@ new bool:g_SteamToolsAvailable = false;
 
 public OnPluginStart()
 {
+	LoadTranslations("common.phrases");
+
 	RegAdminCmd("sm_printvacstatus", Command_VACStatus, ADMFLAG_ROOT, "Shows the current VAC status.");
 	RegAdminCmd("sm_forceheartbeat", Command_Heartbeat, ADMFLAG_ROOT, "Sends a heartbeat to the Steam Master Servers.");
 	RegAdminCmd("sm_printip", Command_PrintIP, ADMFLAG_ROOT, "Shows the server's current external IP address.");
@@ -94,7 +96,17 @@ public Action:Steam_RestartRequested()
 
 public Action:Steam_GroupStatusResult(String:clientAuthString[], bool:groupMember)
 {
-	PrintToChatAll("[SM] %s is %s member in group.", clientAuthString, groupMember?"a":"not a");
+	new String:authBuffer[64];
+	
+	for (new i = 0; i < MaxClients; i++)
+	{
+		GetClientAuthString(i, authBuffer, 64);
+		if (StrEqual(clientAuthString, authBuffer))
+		{
+			PrintToChatAll("[SM] %N is %s member in group.", i, groupMember?"a":"not a");
+			break;
+		}
+	}
 	return Plugin_Continue;
 }
 
