@@ -31,8 +31,9 @@
  * =============================================================================
  * Attributions & Thanks:
  * =============================================================================
- * AzuiSleet - Wrote the original example code to acquire the SteamClient
- *             factory.
+ * AzuiSleet          - Wrote the original example code to acquire the SteamClient
+ *                      factory.
+ * VoiDeD & AzuiSleet - The OpenSteamworks project.
  * =============================================================================
  */
 
