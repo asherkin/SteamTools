@@ -2,14 +2,14 @@
 # Makefile written by David "BAILOPAN" Anderson
 # Modified by Asher "asherkin" Baker for the "steamtools" project
 
-SMSDK = ../../sdks/sourcemod-1.2
+SMSDK = ../../sdks/sourcemod-1.3
 SRCDS_BASE = /home/hlds/tf2
 HL2SDK_ORIG = ../../sdks/hl2sdk
 HL2SDK_OB = ../../sdks/hl2sdk-ob
 HL2SDK_OB_VALVE = ../../sdks/hl2sdk-ob-valve
 HL2SDK_L4D = ../../sdks/hl2sdk-l4d
 HL2SDK_L4D2 = ../../sdks/hl2sdk-l4d2
-MMSOURCE18 = ../../sdks/mmsource-1.7
+MMSOURCE18 = ../../sdks/mmsource-1.8
 
 #####################################
 ### EDIT BELOW FOR OTHER PROJECTS ###
@@ -21,6 +21,7 @@ PROJECT = steamtools
 USEMETA = true
 
 OBJECTS = sdk/smsdk_ext.cpp extension.cpp
+BINARY = $(PROJECT).ext
 
 ENGINE = orangeboxvalve
 
@@ -43,7 +44,7 @@ ifeq "$(ENGINE)" "original"
 	METAMOD = $(MMSOURCE18)/core-legacy
 	INCLUDE += -I$(HL2SDK)/public/dlls
 	SRCDS = $(SRCDS_BASE)
-	LIB_SUFFIX = i486
+	LIB_SUFFIX = _i486.so
 	override ENGSET = true
 endif
 ifeq "$(ENGINE)" "orangebox"
@@ -54,7 +55,7 @@ ifeq "$(ENGINE)" "orangebox"
 	METAMOD = $(MMSOURCE18)/core
 	INCLUDE += -I$(HL2SDK)/public/game/server
 	SRCDS = $(SRCDS_BASE)/orangebox
-	LIB_SUFFIX = i486
+	LIB_SUFFIX = _i486.so
 	override ENGSET = true
 endif
 ifeq "$(ENGINE)" "orangeboxvalve"
@@ -65,7 +66,8 @@ ifeq "$(ENGINE)" "orangeboxvalve"
 	METAMOD = $(MMSOURCE18)/core
 	INCLUDE += -I$(HL2SDK)/public/game/server
 	SRCDS = $(SRCDS_BASE)/orangebox
-	LIB_SUFFIX = i486
+	LIB_PREFIX = lib
+	LIB_SUFFIX = .so
 	override ENGSET = true
 endif
 ifeq "$(ENGINE)" "left4dead"
@@ -76,7 +78,7 @@ ifeq "$(ENGINE)" "left4dead"
 	METAMOD = $(MMSOURCE18)/core
 	INCLUDE += -I$(HL2SDK)/public/game/server
 	SRCDS = $(SRCDS_BASE)/l4d
-	LIB_SUFFIX = i486
+	LIB_SUFFIX = _i486.so
 	override ENGSET = true
 endif
 ifeq "$(ENGINE)" "left4dead2"
@@ -87,25 +89,25 @@ ifeq "$(ENGINE)" "left4dead2"
 	METAMOD = $(MMSOURCE18)/core
 	INCLUDE += -I$(HL2SDK)/public/game/server
 	SRCDS = $(SRCDS_BASE)/left4dead2
-	LIB_SUFFIX = linux
+	LIB_PREFIX = lib
+	LIB_SUFFIX = .so
 	override ENGSET = true
 endif
 
 	INCLUDE += -I../../osw/Open\ Steamworks
 
 ifeq "$(USEMETA)" "true"
-	LINK_HL2 = $(HL2LIB)/tier1_i486.a vstdlib_$(LIB_SUFFIX).so tier0_$(LIB_SUFFIX).so
+	LINK_HL2 = $(HL2LIB)/tier1_i486.a $(HL2LIB)/mathlib_i486.a $(LIB_PREFIX)vstdlib$(LIB_SUFFIX) $(LIB_PREFIX)tier0$(LIB_SUFFIX)
 
 	LINK += libsteam_api_linux.so steamclient_linux.so
-
 	LINK += $(LINK_HL2)
 
-	INCLUDE += -I. -I.. -Isdk -I$(HL2PUB) -I$(HL2PUB)/engine -I$(HL2PUB)/tier0 -I$(HL2PUB)/tier1 \
-		-I$(METAMOD) -I$(METAMOD)/sourcehook -I$(SMSDK)/public -I$(SMSDK)/public/sourcepawn
+	INCLUDE += -I. -I.. -ICEntity -Isdk -I$(HL2PUB) -I$(HL2PUB)/engine -I$(HL2PUB)/tier0 -I$(HL2PUB)/tier1 \
+		-I$(HL2PUB)/mathlib -I$(METAMOD) -I$(METAMOD)/sourcehook -I$(SMSDK)/public -I$(SMSDK)/public/sourcepawn
 	CFLAGS += -DSE_EPISODEONE=1 -DSE_DARKMESSIAH=2 -DSE_ORANGEBOX=3 -DSE_ORANGEBOXVALVE=4 \
 		-DSE_LEFT4DEAD=5 -DSE_LEFT4DEAD2=6
 else
-	INCLUDE += -I. -I.. -Isdk -I$(SMSDK)/public -I$(SMSDK)/public/sourcepawn
+	INCLUDE += -I. -I.. -ICEntity -Isdk -I$(SMSDK)/public -I$(SMSDK)/public/sourcepawn
 endif
 
 LINK += -m32 -lm -ldl
@@ -134,10 +136,10 @@ endif
 OS := $(shell uname -s)
 ifeq "$(OS)" "Darwin"
 	LINK += -dynamiclib
-	BINARY = $(PROJECT).ext.2.ep2v.dylib
+	FULL_BINARY = $(BINARY).dylib
 else
 	LINK += -static-libgcc -shared
-	BINARY = $(PROJECT).ext.2.ep2v.so
+	FULL_BINARY = $(BINARY).so
 endif
 
 GCC_VERSION := $(shell $(CPP) -dumpversion >&1 | cut -b1)
@@ -154,11 +156,9 @@ $(BIN_DIR)/%.o: %.cpp
 all: check
 	mkdir -p $(BIN_DIR)/sdk
 	if [ "$(USEMETA)" = "true" ]; then \
-		ln -sf $(HL2LIB)/vstdlib_$(LIB_SUFFIX).so; \
-		ln -sf $(HL2LIB)/tier0_$(LIB_SUFFIX).so; \
+		ln -sf $(HL2LIB)/$(LIB_PREFIX)vstdlib$(LIB_SUFFIX); \
+		ln -sf $(HL2LIB)/$(LIB_PREFIX)tier0$(LIB_SUFFIX); \
 	fi
-	ln -sf $(SRCDS)/bin/libsteam_api_linux.so; \
-	ln -sf $(SRCDS)/bin/steamclient_linux.so; \
 	$(MAKE) -f Makefile extension
 
 check:
@@ -169,7 +169,7 @@ check:
 	fi
 
 extension: check $(OBJ_LINUX)
-	$(CPP) $(INCLUDE) $(OBJ_LINUX) $(LINK) -o $(BIN_DIR)/$(BINARY)
+	$(CPP) $(INCLUDE) $(OBJ_LINUX) $(LINK) -o $(BIN_DIR)/$(FULL_BINARY)
 
 debug:
 	$(MAKE) -f Makefile all DEBUG=true
@@ -179,4 +179,4 @@ default: all
 clean: check
 	rm -rf $(BIN_DIR)/*.o
 	rm -rf $(BIN_DIR)/sdk/*.o
-	rm -rf $(BIN_DIR)/$(BINARY)
+	rm -rf $(BIN_DIR)/$(FULL_BINARY)
