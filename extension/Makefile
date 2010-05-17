@@ -159,6 +159,8 @@ all: check
 		ln -sf $(HL2LIB)/$(LIB_PREFIX)vstdlib$(LIB_SUFFIX); \
 		ln -sf $(HL2LIB)/$(LIB_PREFIX)tier0$(LIB_SUFFIX); \
 	fi
+	ln -sf $(SRCDS)/bin/libsteam_api_linux.so; \
+	ln -sf $(SRCDS)/bin/steamclient_linux.so; \
 	$(MAKE) -f Makefile extension
 
 check:
