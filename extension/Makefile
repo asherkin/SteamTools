@@ -99,7 +99,7 @@ endif
 ifeq "$(USEMETA)" "true"
 	LINK_HL2 = $(HL2LIB)/tier1_i486.a $(HL2LIB)/mathlib_i486.a $(LIB_PREFIX)vstdlib$(LIB_SUFFIX) $(LIB_PREFIX)tier0$(LIB_SUFFIX)
 
-	LINK += libsteam_api_linux.so steamclient_linux.so
+	LINK += $(LIB_PREFIX)steam_api$(LIB_SUFFIX); steamclient$(LIB_SUFFIX)
 	LINK += $(LINK_HL2)
 
 	INCLUDE += -I. -I.. -ICEntity -Isdk -I$(HL2PUB) -I$(HL2PUB)/engine -I$(HL2PUB)/tier0 -I$(HL2PUB)/tier1 \
