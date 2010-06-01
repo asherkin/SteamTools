@@ -3,9 +3,9 @@
 # Modified by Asher Baker (asherkin) for the "steamtools" project
 # !!! THIS VERSION IS FOR THE AUTOBUILDER !!!
 
-SMSDK = ../sourcemod
-HL2SDK_OB_VALVE = ../hl2sdk-ob-valve
-MMSOURCE18 = ../mmsource
+SMSDK = ../../sourcemod
+HL2SDK_OB_VALVE = ../../hl2sdk-ob-valve
+MMSOURCE18 = ../../mmsource
 
 #####################################
 ### EDIT BELOW FOR OTHER PROJECTS ###
@@ -90,7 +90,7 @@ ifeq "$(ENGINE)" "left4dead2"
 	override ENGSET = true
 endif
 
-	INCLUDE += -I../osw/Open\ Steamworks
+	INCLUDE += -I../../osw/Open\ Steamworks
 
 ifeq "$(USEMETA)" "true"
 	LINK_HL2 = $(HL2LIB)/tier1_i486.a $(LIB_PREFIX)vstdlib$(LIB_SUFFIX) $(LIB_PREFIX)tier0$(LIB_SUFFIX)
