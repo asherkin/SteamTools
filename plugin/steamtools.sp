@@ -52,6 +52,7 @@ public OnPluginStart()
 	LoadTranslations("common.phrases");
 
 	RegAdminCmd("sm_printvacstatus", Command_VACStatus, ADMFLAG_ROOT, "Shows the current VAC status.");
+	RegAdminCmd("sm_printconnectionstatus", Command_ConnectionStatus, ADMFLAG_ROOT, "Shows the current Steam connection status.");
 	RegAdminCmd("sm_forceheartbeat", Command_Heartbeat, ADMFLAG_ROOT, "Sends a heartbeat to the Steam Master Servers.");
 	RegAdminCmd("sm_printip", Command_PrintIP, ADMFLAG_ROOT, "Shows the server's current external IP address.");
 	RegAdminCmd("sm_groupstatus", Command_GroupStatus, ADMFLAG_ROOT, "Requests a clients membership status in a Steam Community Group.");
@@ -94,7 +95,19 @@ public Action:Steam_RestartRequested()
 	return Plugin_Continue;
 }
 
-public Action:Steam_GroupStatusResult(String:clientAuthString[64], bool:groupMember)
+public Action:Steam_SteamServersConnected()
+{
+	PrintToChatAll("[SM] Lost connection to Steam servers.");
+	return Plugin_Continue;
+}
+
+public Action:Steam_SteamServersDisconnected()
+{
+	PrintToChatAll("[SM] Connection to Steam servers reestablished.");
+	return Plugin_Continue;
+}
+
+public Action:Steam_GroupStatusResult(String:clientAuthString[64], groupAccountID, bool:groupMember, bool:groupOfficer)
 {
 	new String:authBuffer[64];
 	
@@ -118,12 +131,29 @@ public Action:Command_VACStatus(client, args)
 	return Plugin_Handled;
 }
 
+public Action:Command_ConnectionStatus(client, args)
+{
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
+	ReplyToCommand(client, "[SM] %s to Steam servers.", Steam_IsConnected()?"Connected":"Not connected");
+	return Plugin_Handled;
+}
+
 public Action:Command_Heartbeat(client, args)
 {
 	if (!g_SteamToolsAvailable) return Plugin_Continue;
 	
 	Steam_ForceHeartbeat();
 	ReplyToCommand(client, "[SM] Heartbeat Sent.");
+	return Plugin_Handled;
+}
+
+public Action:Command_CycleConnection(client, args)
+{
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
+	Steam_CycleConnection();
+	ReplyToCommand(client, "[SM] Steam connection cycled.");
 	return Plugin_Handled;
 }
 

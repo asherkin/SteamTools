@@ -67,17 +67,35 @@ GetUserFn g_GameServerSteamUser;
 int g_GameFrameHookID = 0;
 int g_WasRestartRequestedHookID = 0;
 
+bool g_SteamServersConnected = false;
+
 IForward * g_pForwardGroupStatusResult = NULL;
 IForward * g_pForwardRestartRequested = NULL;
+
+IForward * g_pForwardSteamServersConnected = NULL;
+IForward * g_pForwardSteamServersDisconnected = NULL;
 
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
 	{ "Steam_RequestGroupStatus",	RequestGroupStatus },
 	{ "Steam_ForceHeartbeat",		ForceHeartbeat },
 	{ "Steam_IsVACEnabled",			IsVACEnabled },
+	{ "Steam_IsConnected",			IsConnected },
 	{ "Steam_GetPublicIP",			GetPublicIP },
 	{ NULL,							NULL }
 };
+
+/**
+ * =============================================================================
+ * Testing Area:
+ * =============================================================================
+ */
+
+
+
+/**
+ * =============================================================================
+ */
 
 void Hook_GameFrame(bool simulating)
 {
@@ -87,16 +105,47 @@ void Hook_GameFrame(bool simulating)
 		HSteamCall steamCall;
 		if (Steam_BGetCallback(g_GameServerSteamPipe(), &callbackMsg, &steamCall))
 		{
-			if (callbackMsg.m_iCallback == GSClientGroupStatus_t::k_iCallback)
+			switch (callbackMsg.m_iCallback)
 			{
-					GSClientGroupStatus_t *GroupStatus = (GSClientGroupStatus_t *)callbackMsg.m_pubParam;
+			case GSClientGroupStatus_t::k_iCallback:
+				{
+						GSClientGroupStatus_t *GroupStatus = (GSClientGroupStatus_t *)callbackMsg.m_pubParam;
 
-					cell_t cellResults = 0;
-					g_pForwardGroupStatusResult->PushString(GroupStatus->m_SteamIDUser.Render());
-					g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bMember);
-					g_pForwardGroupStatusResult->Execute(&cellResults);
+						cell_t cellResults = 0;
+						g_pForwardGroupStatusResult->PushString(GroupStatus->m_SteamIDUser.Render());
+						g_pForwardGroupStatusResult->PushCell(GroupStatus->m_SteamIDGroup.GetAccountID());
+						g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bMember);
+						g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bOfficer);
+						g_pForwardGroupStatusResult->Execute(&cellResults);
 
-					Steam_FreeLastCallback(g_GameServerSteamPipe());
+						Steam_FreeLastCallback(g_GameServerSteamPipe());
+						break;
+				}
+			case SteamServersConnected_t::k_iCallback:
+				{
+					if (!g_SteamServersConnected)
+					{
+						cell_t cellResults = 0;
+						g_pForwardSteamServersConnected->Execute(&cellResults);
+						g_SteamServersConnected = true;
+					}
+					break;
+				}
+			case SteamServersDisconnected_t::k_iCallback:
+				{
+					if (g_SteamServersConnected)
+					{
+						cell_t cellResults = 0;
+						g_pForwardSteamServersDisconnected->Execute(&cellResults);
+						g_SteamServersConnected = false;
+					}
+					break;
+				}
+			default:
+				{
+					//g_SMAPI->ConPrintf("Unhandled Callback: %d", callbackMsg.m_iCallback);
+					break;
+				}
 			}
 		}
 	} else {
@@ -110,14 +159,14 @@ void Hook_GameFrame(bool simulating)
 		g_GameServerSteamPipe = (GetPipeFn)GetProcAddress(steamapi, "SteamGameServer_GetHSteamPipe");
 		g_GameServerSteamUser = (GetUserFn)GetProcAddress(steamapi, "SteamGameServer_GetHSteamUser");
 #elif defined _LINUX
-		void* steamclient_library = dlopen("steamclient_linux.so", RTLD_LAZY);
+		void* steamclient_library = dlopen("steamclient.so", RTLD_LAZY);
 
 		CreateInterfaceFn steamclient = (CreateInterfaceFn)dlsym(steamclient_library, "CreateInterface");
 		ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 
 		dlclose(steamclient_library);
 
-		void* steam_api_library = dlopen("libsteam_api_linux.so", RTLD_LAZY);
+		void* steam_api_library = dlopen("libsteam_api.so", RTLD_LAZY);
 
 		g_GameServerSteamPipe = (GetPipeFn)dlsym(steam_api_library, "SteamGameServer_GetHSteamPipe");
 		g_GameServerSteamUser = (GetUserFn)dlsym(steam_api_library, "SteamGameServer_GetHSteamUser");
@@ -139,10 +188,11 @@ void Hook_GameFrame(bool simulating)
 		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamMasterServerUpdater(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
 
-		g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), true);
+		g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), false);
 
 		g_pSM->LogMessage(myself, "Loading complete.");
 
+		g_SteamServersConnected = g_pSteamGameServer->LoggedOn();
 	}
 }
 
@@ -163,8 +213,11 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	g_pShareSys->AddNatives(myself, g_ExtensionNatives);
 	g_pShareSys->RegisterLibrary(myself, "SteamTools");
 
-	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 2, NULL, Param_String, Param_Cell);
+	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 2, NULL, Param_String, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardRestartRequested = g_pForwards->CreateForward("Steam_RestartRequested", ET_Ignore, 0, NULL);
+
+	g_pForwardSteamServersConnected = g_pForwards->CreateForward("Steam_SteamServersConnected", ET_Ignore, 0, NULL);
+	g_pForwardSteamServersDisconnected = g_pForwards->CreateForward("Steam_SteamServersDisconnected", ET_Ignore, 0, NULL);
 
 	g_pSM->LogMessage(myself, "Initial loading stage complete...");
 
@@ -225,6 +278,9 @@ void SteamTools::SDK_OnUnload()
 
 	g_pForwards->ReleaseForward(g_pForwardGroupStatusResult);
 	g_pForwards->ReleaseForward(g_pForwardRestartRequested);
+
+	g_pForwards->ReleaseForward(g_pForwardSteamServersConnected);
+	g_pForwards->ReleaseForward(g_pForwardSteamServersDisconnected);
 }
 
 static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
@@ -243,6 +299,11 @@ static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params)
 static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params)
 {
 	return g_pSteamGameServer->Secure();
+}
+
+static cell_t IsConnected(IPluginContext *pContext, const cell_t *params)
+{
+	return g_pSteamGameServer->LoggedOn();
 }
 
 static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params)
