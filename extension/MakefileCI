@@ -3,6 +3,7 @@
 # Modified by Asher Baker (asherkin) for the "steamtools" project
 # !!! THIS VERSION IS FOR THE AUTOBUILDER !!!
 
+SRCDS_BASE = ~/srcds/
 SMSDK = ../../sourcemod
 HL2SDK_OB_VALVE = ../../hl2sdk-ob-valve
 MMSOURCE18 = ../../mmsource
