@@ -102,6 +102,7 @@ ifeq "$(USEMETA)" "true"
 	LINK += $(LIB_PREFIX)steam_api$(LIB_SUFFIX) steamclient$(LIB_SUFFIX)
 	LINK += $(LINK_HL2)
 
+	INCLUDE += -I. -Isdk
 	INCLUDE += -I$(SMSDK)/public -I$(SMSDK)/public/sourcepawn
 	INCLUDE += -I$(HL2PUB) -I$(HL2PUB)/engine -I$(HL2PUB)/game/server -I$(HL2PUB)/tier0 -I$(HL2PUB)/tier1
 	INCLUDE += -I$(HL2SDK)/game/shared -I$(HL2SDK)/game/server
