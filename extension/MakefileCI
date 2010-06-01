@@ -1,15 +1,11 @@
-# (C)2004-2009 SourceMod Development Team
+# (C)2004-2010 SourceMod Development Team
 # Makefile written by David "BAILOPAN" Anderson
-# Modified by Asher "asherkin" Baker for the "steamtools" project
+# Modified by Asher Baker (asherkin) for the "steamtools" project
+# !!! THIS VERSION IS FOR THE AUTOBUILDER !!!
 
-SMSDK = ../../sdks/sourcemod-1.3
-SRCDS_BASE = /home/hlds/tf2
-HL2SDK_ORIG = ../../sdks/hl2sdk
-HL2SDK_OB = ../../sdks/hl2sdk-ob
-HL2SDK_OB_VALVE = ../../sdks/hl2sdk-ob-valve
-HL2SDK_L4D = ../../sdks/hl2sdk-l4d
-HL2SDK_L4D2 = ../../sdks/hl2sdk-l4d2
-MMSOURCE18 = ../../sdks/mmsource-1.8
+SMSDK = ../sourcemod
+HL2SDK_OB_VALVE = ../hl2sdk-ob-valve
+MMSOURCE18 = ../mmsource
 
 #####################################
 ### EDIT BELOW FOR OTHER PROJECTS ###
@@ -94,7 +90,7 @@ ifeq "$(ENGINE)" "left4dead2"
 	override ENGSET = true
 endif
 
-	INCLUDE += -I../../osw/Open\ Steamworks
+	INCLUDE += -I../osw/Open\ Steamworks
 
 ifeq "$(USEMETA)" "true"
 	LINK_HL2 = $(HL2LIB)/tier1_i486.a $(LIB_PREFIX)vstdlib$(LIB_SUFFIX) $(LIB_PREFIX)tier0$(LIB_SUFFIX)
@@ -164,7 +160,7 @@ all: check
 	fi
 	ln -sf $(SRCDS)/bin/$(LIB_PREFIX)steam_api$(LIB_SUFFIX); \
 	ln -sf $(SRCDS)/bin/steamclient$(LIB_SUFFIX); \
-	$(MAKE) -f Makefile extension
+	$(MAKE) -f MakefileCI extension
 
 check:
 	if [ "$(USEMETA)" = "true" ] && [ "$(ENGSET)" = "false" ]; then \
@@ -177,7 +173,7 @@ extension: check $(OBJ_LINUX)
 	$(CPP) $(INCLUDE) $(OBJ_LINUX) $(LINK) -o $(BIN_DIR)/$(FULL_BINARY)
 
 debug:
-	$(MAKE) -f Makefile all DEBUG=true
+	$(MAKE) -f MakefileCI all DEBUG=true
 
 default: all
 
