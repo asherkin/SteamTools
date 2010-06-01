@@ -102,8 +102,7 @@ void Hook_GameFrame(bool simulating)
 	if(g_pSteamGameServer)
 	{
 		CallbackMsg_t callbackMsg;
-		HSteamCall steamCall;
-		if (Steam_BGetCallback(g_GameServerSteamPipe(), &callbackMsg, &steamCall))
+		if (Steam_BGetCallback(g_GameServerSteamPipe(), &callbackMsg))
 		{
 			switch (callbackMsg.m_iCallback)
 			{
