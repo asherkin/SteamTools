@@ -148,15 +148,6 @@ public Action:Command_Heartbeat(client, args)
 	return Plugin_Handled;
 }
 
-public Action:Command_CycleConnection(client, args)
-{
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
-	Steam_CycleConnection();
-	ReplyToCommand(client, "[SM] Steam connection cycled.");
-	return Plugin_Handled;
-}
-
 public Action:Command_PrintIP(client, args)
 {
 	if (!g_SteamToolsAvailable) return Plugin_Continue;
