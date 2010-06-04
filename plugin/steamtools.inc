@@ -38,6 +38,7 @@ native bool:Steam_IsVACEnabled();
 native bool:Steam_IsConnected();
 native Steam_GetPublicIP(octets[4]);
 forward Action:Steam_GroupStatusResult(String:clientAuthString[64], groupAccountID, bool:groupMember, bool:groupOfficer);
+forward Action:Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed);
 forward Action:Steam_RestartRequested();
 forward Action:Steam_SteamServersConnected();
 forward Action:Steam_SteamServersDisconnected();
@@ -53,6 +54,7 @@ public Extension:__ext_SteamTools =
 public __ext_SteamTools_SetNTVOptional()
 {
 	MarkNativeAsOptional("Steam_RequestGroupStatus");
+	MarkNativeAsOptional("Steam_RequestGameplayStats");
 	MarkNativeAsOptional("Steam_ForceHeartbeat");
 	MarkNativeAsOptional("Steam_IsVACEnabled");
 	MarkNativeAsOptional("Steam_IsConnected");

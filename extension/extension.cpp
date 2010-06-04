@@ -70,6 +70,7 @@ int g_WasRestartRequestedHookID = 0;
 bool g_SteamServersConnected = false;
 
 IForward * g_pForwardGroupStatusResult = NULL;
+IForward * g_pForwardGameplayStats = NULL;
 IForward * g_pForwardRestartRequested = NULL;
 
 IForward * g_pForwardSteamServersConnected = NULL;
@@ -78,6 +79,7 @@ IForward * g_pForwardSteamServersDisconnected = NULL;
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
 	{ "Steam_RequestGroupStatus",	RequestGroupStatus },
+	{ "Steam_RequestGameplayStats", RequestGameplayStats },
 	{ "Steam_ForceHeartbeat",		ForceHeartbeat },
 	{ "Steam_IsVACEnabled",			IsVACEnabled },
 	{ "Steam_IsConnected",			IsConnected },
@@ -119,6 +121,23 @@ void Hook_GameFrame(bool simulating)
 
 						Steam_FreeLastCallback(g_GameServerSteamPipe());
 						break;
+				}
+			case GSGameplayStats_t::k_iCallback:
+				{
+					GSGameplayStats_t *GameplayStats = (GSGameplayStats_t *)callbackMsg.m_pubParam;
+
+					if (GameplayStats->m_eResult == k_EResultOK)
+					{
+						cell_t cellResults = 0;
+						g_pForwardGameplayStats->PushCell(GameplayStats->m_nRank);
+						g_pForwardGameplayStats->PushCell(GameplayStats->m_unTotalConnects);
+						g_pForwardGameplayStats->PushCell(GameplayStats->m_unTotalMinutesPlayed);
+						g_pForwardGameplayStats->Execute(&cellResults);
+					} else {
+						g_pSM->LogError(myself, "Server Gameplay Stats received with an unexpected eResult. (eResult = %d)", GameplayStats->m_eResult);
+					}
+					Steam_FreeLastCallback(g_GameServerSteamPipe());
+					break;
 				}
 			case SteamServersConnected_t::k_iCallback:
 				{
@@ -212,7 +231,8 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	g_pShareSys->AddNatives(myself, g_ExtensionNatives);
 	g_pShareSys->RegisterLibrary(myself, "SteamTools");
 
-	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 2, NULL, Param_String, Param_Cell, Param_Cell, Param_Cell);
+	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 4, NULL, Param_String, Param_Cell, Param_Cell, Param_Cell);
+	g_pForwardGameplayStats = g_pForwards->CreateForward("Steam_GameplayStats", ET_Ignore, 3, NULL, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardRestartRequested = g_pForwards->CreateForward("Steam_RestartRequested", ET_Ignore, 0, NULL);
 
 	g_pForwardSteamServersConnected = g_pForwards->CreateForward("Steam_SteamServersConnected", ET_Ignore, 0, NULL);
@@ -276,6 +296,7 @@ void SteamTools::SDK_OnUnload()
 	}
 
 	g_pForwards->ReleaseForward(g_pForwardGroupStatusResult);
+	g_pForwards->ReleaseForward(g_pForwardGameplayStats);
 	g_pForwards->ReleaseForward(g_pForwardRestartRequested);
 
 	g_pForwards->ReleaseForward(g_pForwardSteamServersConnected);
@@ -286,7 +307,13 @@ static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
 {
 	char * strUserID;
 	pContext->LocalToString(params[1], &strUserID);
-	return g_pSteamGameServer->RequestUserGroupStatus(SteamIDToCSteamID(strUserID), CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));;
+	return g_pSteamGameServer->RequestUserGroupStatus(SteamIDToCSteamID(strUserID), CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));
+}
+
+static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params)
+{
+	g_pSteamGameServer->GetGameplayStats();
+	return 0;
 }
 
 static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params)
