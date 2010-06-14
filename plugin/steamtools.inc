@@ -39,6 +39,7 @@ native bool:Steam_IsConnected();
 native Steam_GetPublicIP(octets[4]);
 forward Action:Steam_GroupStatusResult(String:clientAuthString[64], groupAccountID, bool:groupMember, bool:groupOfficer);
 forward Action:Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed);
+forward Action:Steam_Reputation(reputationScore, bool:banned, bannedIP, bannedPort, bannedGameID, banExpires);
 forward Action:Steam_RestartRequested();
 forward Action:Steam_SteamServersConnected();
 forward Action:Steam_SteamServersDisconnected();

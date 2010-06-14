@@ -58,6 +58,8 @@ ICvar *g_pLocalCVar = NULL;
 ISteamGameServer008 *g_pSteamGameServer = NULL;
 ISteamMasterServerUpdater001 *g_pSteamMasterServerUpdater = NULL;
 
+ISteamGameServer010 *g_pSteamGameServer010 = NULL;
+
 typedef HSteamPipe (*GetPipeFn)();
 typedef HSteamUser (*GetUserFn)();
 
@@ -71,6 +73,7 @@ bool g_SteamServersConnected = false;
 
 IForward * g_pForwardGroupStatusResult = NULL;
 IForward * g_pForwardGameplayStats = NULL;
+IForward * g_pForwardReputation = NULL;
 IForward * g_pForwardRestartRequested = NULL;
 
 IForward * g_pForwardSteamServersConnected = NULL;
@@ -159,6 +162,34 @@ void Hook_GameFrame(bool simulating)
 					}
 					break;
 				}
+			case GSReputation_t::k_iCallback:
+				{
+					GSReputation_t *Reputation = (GSReputation_t *)callbackMsg.m_pubParam;
+
+					if (Reputation->m_eResult == k_EResultOK)
+					{
+						cell_t cellResults = 0;
+						g_pForwardReputation->PushCell(Reputation->m_unReputationScore);
+						g_pForwardReputation->PushCell(Reputation->m_bBanned);
+						if (Reputation->m_bBanned)
+						{
+							g_pForwardReputation->PushCell(Reputation->m_unBannedIP);
+							g_pForwardReputation->PushCell(Reputation->m_usBannedPort);
+							g_pForwardReputation->PushCell(Reputation->m_ulBannedGameID);
+							g_pForwardReputation->PushCell(Reputation->m_unBanExpires);
+						} else {
+							g_pForwardReputation->PushCell(0);
+							g_pForwardReputation->PushCell(0);
+							g_pForwardReputation->PushCell(0);
+							g_pForwardReputation->PushCell(0);
+						}
+						g_pForwardReputation->Execute(&cellResults);
+					} else {
+						g_pSM->LogError(myself, "Server Reputation received with an unexpected eResult. (eResult = %d)", Reputation->m_eResult);
+					}
+					Steam_FreeLastCallback(g_GameServerSteamPipe());
+					break;
+				}
 			default:
 				{
 					//g_SMAPI->ConPrintf("Unhandled Callback: %d", callbackMsg.m_iCallback);
@@ -206,6 +237,8 @@ void Hook_GameFrame(bool simulating)
 		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamMasterServerUpdater(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
 
+		g_pSteamGameServer010 = (ISteamGameServer010 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
+
 		g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), false);
 
 		g_pSM->LogMessage(myself, "Loading complete.");
@@ -233,6 +266,7 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 4, NULL, Param_String, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardGameplayStats = g_pForwards->CreateForward("Steam_GameplayStats", ET_Ignore, 3, NULL, Param_Cell, Param_Cell, Param_Cell);
+	g_pForwardReputation = g_pForwards->CreateForward("Steam_Reputation", ET_Ignore, 6, NULL, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardRestartRequested = g_pForwards->CreateForward("Steam_RestartRequested", ET_Ignore, 0, NULL);
 
 	g_pForwardSteamServersConnected = g_pForwards->CreateForward("Steam_SteamServersConnected", ET_Ignore, 0, NULL);
@@ -297,6 +331,7 @@ void SteamTools::SDK_OnUnload()
 
 	g_pForwards->ReleaseForward(g_pForwardGroupStatusResult);
 	g_pForwards->ReleaseForward(g_pForwardGameplayStats);
+	g_pForwards->ReleaseForward(g_pForwardReputation);
 	g_pForwards->ReleaseForward(g_pForwardRestartRequested);
 
 	g_pForwards->ReleaseForward(g_pForwardSteamServersConnected);
