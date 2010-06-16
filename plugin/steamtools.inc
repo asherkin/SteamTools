@@ -49,7 +49,7 @@ forward Action:Steam_SteamServersDisconnected();
 public Extension:__ext_SteamTools = 
 {
 	name = "SteamTools",
-	file = "steamtools.ext.2.ep2v",
+	file = "steamtools.ext",
 	autoload = 0,
 	required = 0,
 }
