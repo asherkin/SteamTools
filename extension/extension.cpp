@@ -169,12 +169,12 @@ void Hook_GameFrame(bool simulating)
 			case SteamAPICallCompleted_t::k_iCallback:
 				{
 					SteamAPICallCompleted_t *APICallComplete = (SteamAPICallCompleted_t *)callbackMsg.m_pubParam;
-					
+
 					if (APICallComplete->m_hAsyncCall == g_SteamAPICall)
 					{
-						GSReputation_t *Reputation;
+						GSReputation_t *Reputation = NULL;
 						bool bFailed = false;
-						g_pSteamUtils->GetAPICallResult(g_SteamAPICall, &Reputation, sizeof(GSReputation_t), GSReputation_t::k_iCallback, &bFailed);
+						g_pSteamUtils->GetAPICallResult(g_SteamAPICall, Reputation, sizeof(GSReputation_t), GSReputation_t::k_iCallback, &bFailed);
 						if (bFailed)
 						{
 							ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(g_SteamAPICall);
