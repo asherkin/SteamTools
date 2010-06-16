@@ -117,6 +117,7 @@ void Hook_GameFrame(bool simulating);
 bool Hook_WasRestartRequested();
 static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params);
 static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params);
+static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *params);
 static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params);
 static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params);
 static cell_t IsConnected(IPluginContext *pContext, const cell_t *params);

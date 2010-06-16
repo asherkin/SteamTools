@@ -33,7 +33,7 @@
 
 #include <steamtools>
 
-#define PLUGIN_VERSION "0.1.0"
+#define PLUGIN_VERSION "0.2.0"
 
 public Plugin:myinfo = {
 	name        = "SteamTools Tester",
@@ -51,11 +51,13 @@ public OnPluginStart()
 {
 	LoadTranslations("common.phrases");
 
+	RegAdminCmd("sm_groupstatus", Command_GroupStatus, ADMFLAG_ROOT, "Requests a client's membership status in a Steam Community Group.");
+	RegAdminCmd("sm_printgameplaystats", Command_GameplayStats, ADMFLAG_ROOT, "Requests a server's gameplay stats from SteamWorks.");
+	RegAdminCmd("sm_printserverreputation", Command_ServerReputation, ADMFLAG_ROOT, "Requests a server's reputation from the Steam Master Servers.");
+	RegAdminCmd("sm_forceheartbeat", Command_Heartbeat, ADMFLAG_ROOT, "Sends a heartbeat to the Steam Master Servers.");
 	RegAdminCmd("sm_printvacstatus", Command_VACStatus, ADMFLAG_ROOT, "Shows the current VAC status.");
 	RegAdminCmd("sm_printconnectionstatus", Command_ConnectionStatus, ADMFLAG_ROOT, "Shows the current Steam connection status.");
-	RegAdminCmd("sm_forceheartbeat", Command_Heartbeat, ADMFLAG_ROOT, "Sends a heartbeat to the Steam Master Servers.");
 	RegAdminCmd("sm_printip", Command_PrintIP, ADMFLAG_ROOT, "Shows the server's current external IP address.");
-	RegAdminCmd("sm_groupstatus", Command_GroupStatus, ADMFLAG_ROOT, "Requests a clients membership status in a Steam Community Group.");
 
 	g_SteamToolsAvailable = LibraryExists("SteamTools");
 }
@@ -88,75 +90,6 @@ public OnClientAuthorized(client, const String:auth[])
 }
 
 // END Loading Code
-
-public Action:Steam_RestartRequested()
-{
-	PrintToChatAll("[SM] Server needs to be restarted due to an update.");
-	return Plugin_Continue;
-}
-
-public Action:Steam_SteamServersConnected()
-{
-	PrintToChatAll("[SM] Lost connection to Steam servers.");
-	return Plugin_Continue;
-}
-
-public Action:Steam_SteamServersDisconnected()
-{
-	PrintToChatAll("[SM] Connection to Steam servers reestablished.");
-	return Plugin_Continue;
-}
-
-public Action:Steam_GroupStatusResult(String:clientAuthString[64], groupAccountID, bool:groupMember, bool:groupOfficer)
-{
-	new String:authBuffer[64];
-	
-	for (new i = 1; i < MaxClients; i++)
-	{
-		GetClientAuthString(i, authBuffer, 64);
-		if (StrEqual(clientAuthString, authBuffer))
-		{
-			PrintToChatAll("[SM] %N is %s member in group.", i, groupMember?"a":"not a");
-			break;
-		}
-	}
-	return Plugin_Continue;
-}
-
-public Action:Command_VACStatus(client, args)
-{
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
-	ReplyToCommand(client, "[SM] VAC is %s.", Steam_IsVACEnabled()?"active":"not active");
-	return Plugin_Handled;
-}
-
-public Action:Command_ConnectionStatus(client, args)
-{
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
-	ReplyToCommand(client, "[SM] %s to Steam servers.", Steam_IsConnected()?"Connected":"Not connected");
-	return Plugin_Handled;
-}
-
-public Action:Command_Heartbeat(client, args)
-{
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
-	Steam_ForceHeartbeat();
-	ReplyToCommand(client, "[SM] Heartbeat Sent.");
-	return Plugin_Handled;
-}
-
-public Action:Command_PrintIP(client, args)
-{
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
-	new octets[4];
-	Steam_GetPublicIP(octets);
-	ReplyToCommand(client, "[SM] Server IP Address: %d.%d.%d.%d", octets[0], octets[1], octets[2], octets[3]);
-	return Plugin_Handled;
-}
 
 public Action:Command_GroupStatus(client, args)
 {
@@ -205,4 +138,103 @@ public Action:Command_GroupStatus(client, args)
 	ReplyToCommand(client, "[SM] %s.", didLastRequestWork?"Group status requested":"Error in requesting group status, not connected to Steam");
 	 
 	return Plugin_Handled;
+}
+
+public Action:Command_GameplayStats(client, args)
+{
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
+	Steam_RequestGameplayStats();
+	ReplyToCommand(client, "[SM] Gameplay Stats Requested.");
+	return Plugin_Handled;
+}
+
+public Action:Command_ServerReputation(client, args)
+{
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
+	Steam_RequestServerReputation();
+	ReplyToCommand(client, "[SM] Server Reputation Requested.");
+	return Plugin_Handled;
+}
+
+public Action:Command_Heartbeat(client, args)
+{
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
+	Steam_ForceHeartbeat();
+	ReplyToCommand(client, "[SM] Heartbeat Sent.");
+	return Plugin_Handled;
+}
+
+public Action:Command_VACStatus(client, args)
+{
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
+	ReplyToCommand(client, "[SM] VAC is %s.", Steam_IsVACEnabled()?"active":"not active");
+	return Plugin_Handled;
+}
+
+public Action:Command_ConnectionStatus(client, args)
+{
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
+	ReplyToCommand(client, "[SM] %s to Steam servers.", Steam_IsConnected()?"Connected":"Not connected");
+	return Plugin_Handled;
+}
+
+public Action:Command_PrintIP(client, args)
+{
+	if (!g_SteamToolsAvailable) return Plugin_Continue;
+	
+	new octets[4];
+	Steam_GetPublicIP(octets);
+	ReplyToCommand(client, "[SM] Server IP Address: %d.%d.%d.%d", octets[0], octets[1], octets[2], octets[3]);
+	return Plugin_Handled;
+}
+
+public Action:Steam_GroupStatusResult(String:clientAuthString[64], groupAccountID, bool:groupMember, bool:groupOfficer)
+{
+	new String:authBuffer[64];
+	
+	for (new i = 1; i < MaxClients; i++)
+	{
+		GetClientAuthString(i, authBuffer, 64);
+		if (StrEqual(clientAuthString, authBuffer))
+		{
+			PrintToChatAll("[SM] %N is %s in group %d.", i, groupMember?(groupOfficer?"an officer":"a member"):"not a member", groupAccountID);
+			break;
+		}
+	}
+	return Plugin_Continue;
+}
+
+public Action:Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed)
+{
+	PrintToChatAll("[SM] Rank: %d. Total Connects: %d. Total Minutes Played: %d.", rank, totalConnects, totalMinutesPlayed);
+	return Plugin_Continue;
+}
+
+public Action:Steam_Reputation(reputationScore, bool:banned, bannedIP, bannedPort, bannedGameID, banExpires)
+{
+	PrintToChatAll("[SM] Reputation Score: %d. Banned: %s.", reputationScore, banned?"true":"false");
+	return Plugin_Continue;
+}
+
+public Action:Steam_RestartRequested()
+{
+	PrintToChatAll("[SM] Server needs to be restarted due to an update.");
+	return Plugin_Continue;
+}
+
+public Action:Steam_SteamServersConnected()
+{
+	PrintToChatAll("[SM] Lost connection to Steam servers.");
+	return Plugin_Continue;
+}
+
+public Action:Steam_SteamServersDisconnected()
+{
+	PrintToChatAll("[SM] Connection to Steam servers reestablished.");
+	return Plugin_Continue;
 }

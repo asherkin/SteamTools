@@ -33,6 +33,8 @@
 #define _steamtools_included
 
 native bool:Steam_RequestGroupStatus(String:clientAuthString[], groupAccountID);
+native Steam_RequestGameplayStats();
+native Steam_RequestServerReputation();
 native Steam_ForceHeartbeat();
 native bool:Steam_IsVACEnabled();
 native bool:Steam_IsConnected();
@@ -56,6 +58,7 @@ public __ext_SteamTools_SetNTVOptional()
 {
 	MarkNativeAsOptional("Steam_RequestGroupStatus");
 	MarkNativeAsOptional("Steam_RequestGameplayStats");
+	MarkNativeAsOptional("Steam_RequestServerReputation");
 	MarkNativeAsOptional("Steam_ForceHeartbeat");
 	MarkNativeAsOptional("Steam_IsVACEnabled");
 	MarkNativeAsOptional("Steam_IsConnected");

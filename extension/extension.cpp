@@ -81,13 +81,14 @@ IForward * g_pForwardSteamServersDisconnected = NULL;
 
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
-	{ "Steam_RequestGroupStatus",	RequestGroupStatus },
-	{ "Steam_RequestGameplayStats", RequestGameplayStats },
-	{ "Steam_ForceHeartbeat",		ForceHeartbeat },
-	{ "Steam_IsVACEnabled",			IsVACEnabled },
-	{ "Steam_IsConnected",			IsConnected },
-	{ "Steam_GetPublicIP",			GetPublicIP },
-	{ NULL,							NULL }
+	{ "Steam_RequestGroupStatus",		RequestGroupStatus },
+	{ "Steam_RequestGameplayStats",		RequestGameplayStats },
+	{ "Steam_RequestServerReputation",	RequestServerReputation },
+	{ "Steam_ForceHeartbeat",			ForceHeartbeat },
+	{ "Steam_IsVACEnabled",				IsVACEnabled },
+	{ "Steam_IsConnected",				IsConnected },
+	{ "Steam_GetPublicIP",				GetPublicIP },
+	{ NULL,								NULL }
 };
 
 /**
@@ -169,20 +170,14 @@ void Hook_GameFrame(bool simulating)
 					if (Reputation->m_eResult == k_EResultOK)
 					{
 						cell_t cellResults = 0;
+
 						g_pForwardReputation->PushCell(Reputation->m_unReputationScore);
 						g_pForwardReputation->PushCell(Reputation->m_bBanned);
-						if (Reputation->m_bBanned)
-						{
-							g_pForwardReputation->PushCell(Reputation->m_unBannedIP);
-							g_pForwardReputation->PushCell(Reputation->m_usBannedPort);
-							g_pForwardReputation->PushCell(Reputation->m_ulBannedGameID);
-							g_pForwardReputation->PushCell(Reputation->m_unBanExpires);
-						} else {
-							g_pForwardReputation->PushCell(0);
-							g_pForwardReputation->PushCell(0);
-							g_pForwardReputation->PushCell(0);
-							g_pForwardReputation->PushCell(0);
-						}
+						g_pForwardReputation->PushCell(Reputation->m_unBannedIP);
+						g_pForwardReputation->PushCell(Reputation->m_usBannedPort);
+						g_pForwardReputation->PushCell(Reputation->m_ulBannedGameID);
+						g_pForwardReputation->PushCell(Reputation->m_unBanExpires);
+
 						g_pForwardReputation->Execute(&cellResults);
 					} else {
 						g_pSM->LogError(myself, "Server Reputation received with an unexpected eResult. (eResult = %d)", Reputation->m_eResult);
@@ -234,10 +229,10 @@ void Hook_GameFrame(bool simulating)
 
 		g_pSM->LogMessage(myself, "Acquiring interfaces and hooking functions...");
 
-		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
+		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGameServer(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamMasterServerUpdater(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
 
-		g_pSteamGameServer010 = (ISteamGameServer010 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
+		g_pSteamGameServer010 = (ISteamGameServer010 *)client->GetISteamGameServer(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
 
 		g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), false);
 
@@ -348,6 +343,12 @@ static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
 static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params)
 {
 	g_pSteamGameServer->GetGameplayStats();
+	return 0;
+}
+
+static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *params)
+{
+	g_pSteamGameServer010->GetServerReputation();
 	return 0;
 }
 
