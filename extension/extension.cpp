@@ -172,36 +172,33 @@ void Hook_GameFrame(bool simulating)
 
 					if (APICallComplete->m_hAsyncCall == g_SteamAPICall)
 					{
-						GSReputation_t *Reputation = NULL;
+						GSReputation_t Reputation;
 						bool bFailed = false;
-						g_pSteamUtils->GetAPICallResult(g_SteamAPICall, Reputation, sizeof(GSReputation_t), GSReputation_t::k_iCallback, &bFailed);
+						g_pSteamUtils->GetAPICallResult(g_SteamAPICall, &Reputation, sizeof(Reputation), Reputation.k_iCallback, &bFailed);
 						if (bFailed)
 						{
 							ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(g_SteamAPICall);
 							g_pSM->LogError(myself, "Server Reputation failed. (ESteamAPICallFailure = %d)", failureReason);
-							g_SteamAPICall = k_uAPICallInvalid;
-							Steam_FreeLastCallback(g_GameServerSteamPipe());
-							break;
 						} else {
-							if (Reputation->m_eResult == k_EResultOK)
+							if (Reputation.m_eResult == k_EResultOK)
 							{
 								cell_t cellResults = 0;
 
-								g_pForwardReputation->PushCell(Reputation->m_unReputationScore);
-								g_pForwardReputation->PushCell(Reputation->m_bBanned);
-								g_pForwardReputation->PushCell(Reputation->m_unBannedIP);
-								g_pForwardReputation->PushCell(Reputation->m_usBannedPort);
-								g_pForwardReputation->PushCell(Reputation->m_ulBannedGameID);
-								g_pForwardReputation->PushCell(Reputation->m_unBanExpires);
+								g_pForwardReputation->PushCell(Reputation.m_unReputationScore);
+								g_pForwardReputation->PushCell(Reputation.m_bBanned);
+								g_pForwardReputation->PushCell(Reputation.m_unBannedIP);
+								g_pForwardReputation->PushCell(Reputation.m_usBannedPort);
+								g_pForwardReputation->PushCell(Reputation.m_ulBannedGameID);
+								g_pForwardReputation->PushCell(Reputation.m_unBanExpires);
 
 								g_pForwardReputation->Execute(&cellResults);
 							} else {
-								g_pSM->LogError(myself, "Server Reputation received with an unexpected eResult. (eResult = %d)", Reputation->m_eResult);
+								g_pSM->LogError(myself, "Server Reputation received with an unexpected eResult. (eResult = %d)", Reputation.m_eResult);
 							}
-							g_SteamAPICall = k_uAPICallInvalid;
-							Steam_FreeLastCallback(g_GameServerSteamPipe());
-							break;
 						}
+
+						g_SteamAPICall = k_uAPICallInvalid;
+						Steam_FreeLastCallback(g_GameServerSteamPipe());
 					}
 					break;
 				}
