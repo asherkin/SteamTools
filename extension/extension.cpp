@@ -57,8 +57,11 @@ ICvar *g_pLocalCVar = NULL;
 
 ISteamGameServer008 *g_pSteamGameServer = NULL;
 ISteamMasterServerUpdater001 *g_pSteamMasterServerUpdater = NULL;
+ISteamUtils005 *g_pSteamUtils = NULL;
 
 ISteamGameServer010 *g_pSteamGameServer010 = NULL;
+
+SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 
 typedef HSteamPipe (*GetPipeFn)();
 typedef HSteamUser (*GetUserFn)();
@@ -163,26 +166,52 @@ void Hook_GameFrame(bool simulating)
 					}
 					break;
 				}
-			case GSReputation_t::k_iCallback:
+			case SteamAPICallCompleted_t::k_iCallback:
 				{
-					GSReputation_t *Reputation = (GSReputation_t *)callbackMsg.m_pubParam;
-
-					if (Reputation->m_eResult == k_EResultOK)
+					SteamAPICallCompleted_t *APICallComplete = (SteamAPICallCompleted_t *)callbackMsg.m_pubParam;
+					
+					bool bFailed;
+					if ((g_SteamAPICall != k_uAPICallInvalid) && g_pSteamUtils->IsAPICallCompleted(g_SteamAPICall, &bFailed))
 					{
-						cell_t cellResults = 0;
-
-						g_pForwardReputation->PushCell(Reputation->m_unReputationScore);
-						g_pForwardReputation->PushCell(Reputation->m_bBanned);
-						g_pForwardReputation->PushCell(Reputation->m_unBannedIP);
-						g_pForwardReputation->PushCell(Reputation->m_usBannedPort);
-						g_pForwardReputation->PushCell(Reputation->m_ulBannedGameID);
-						g_pForwardReputation->PushCell(Reputation->m_unBanExpires);
-
-						g_pForwardReputation->Execute(&cellResults);
-					} else {
-						g_pSM->LogError(myself, "Server Reputation received with an unexpected eResult. (eResult = %d)", Reputation->m_eResult);
+						if (bFailed)
+						{
+							ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(g_SteamAPICall);
+							g_pSM->LogError(myself, "Server Reputation failed. (ESteamAPICallFailure = %d)", failureReason);
+							g_SteamAPICall = k_uAPICallInvalid;
+							Steam_FreeLastCallback(g_GameServerSteamPipe());
+							break;
+						} else {
+							GSReputation_t *Reputation;
+							g_pSteamUtils->GetAPICallResult(g_SteamAPICall, &Reputation, sizeof(GSReputation_t), GSReputation_t::k_iCallback, &bFailed);
+							if (bFailed)
+							{
+								ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(g_SteamAPICall);
+								g_pSM->LogError(myself, "Server Reputation failed. (ESteamAPICallFailure = %d)", failureReason);
+								g_SteamAPICall = k_uAPICallInvalid;
+								Steam_FreeLastCallback(g_GameServerSteamPipe());
+								break;
+							} else {
+								if (Reputation->m_eResult == k_EResultOK)
+								{
+									cell_t cellResults = 0;
+								
+									g_pForwardReputation->PushCell(Reputation->m_unReputationScore);
+									g_pForwardReputation->PushCell(Reputation->m_bBanned);
+									g_pForwardReputation->PushCell(Reputation->m_unBannedIP);
+									g_pForwardReputation->PushCell(Reputation->m_usBannedPort);
+									g_pForwardReputation->PushCell(Reputation->m_ulBannedGameID);
+									g_pForwardReputation->PushCell(Reputation->m_unBanExpires);
+								
+									g_pForwardReputation->Execute(&cellResults);
+								} else {
+									g_pSM->LogError(myself, "Server Reputation received with an unexpected eResult. (eResult = %d)", Reputation->m_eResult);
+								}
+								g_SteamAPICall = k_uAPICallInvalid;
+								Steam_FreeLastCallback(g_GameServerSteamPipe());
+								break;
+							}
+						}
 					}
-					Steam_FreeLastCallback(g_GameServerSteamPipe());
 					break;
 				}
 			default:
@@ -231,6 +260,7 @@ void Hook_GameFrame(bool simulating)
 
 		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGameServer(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamMasterServerUpdater(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
+		g_pSteamUtils = (ISteamUtils005 *)client->GetISteamUtils(g_GameServerSteamPipe(), STEAMUTILS_INTERFACE_VERSION_005);
 
 		g_pSteamGameServer010 = (ISteamGameServer010 *)client->GetISteamGameServer(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
 
@@ -348,8 +378,13 @@ static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *param
 
 static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *params)
 {
-	g_pSteamGameServer010->GetServerReputation();
-	return 0;
+	if (g_SteamAPICall == k_uAPICallInvalid)
+	{
+		g_SteamAPICall = g_pSteamGameServer010->GetServerReputation();
+		return true;
+	} else {
+		return false;
+	}
 }
 
 static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params)
