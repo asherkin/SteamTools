@@ -40,6 +40,50 @@
 #define INTERFACEOSW_H
 #include <Steamworks.h>
 
+class CStatsClient
+{
+public:
+	CStatsClient(int PlayerIndex, CSteamID SteamID)
+	{
+		this->PlayerIndex = PlayerIndex;
+		this->SteamID = SteamID;
+		this->bStats = false;
+	}
+
+	bool operator==(const CStatsClient &other) const {
+		return this->SteamID == other.SteamID;
+	}
+
+	bool operator!=(const CStatsClient &other) const {
+		return !(*this == other);
+	}
+
+	bool operator==(const int &other) const {
+		return this->PlayerIndex == other;
+	}
+
+	bool operator!=(const int &other) const {
+		return !(*this == other);
+	}
+
+	bool operator==(const CSteamID &other) const {
+		return this->SteamID == other;
+	}
+
+	bool operator!=(const CSteamID &other) const {
+		return !(*this == other);
+	}
+
+public:
+	bool HasStats() const { return bStats; }
+	void HasStats(bool val) { bStats = val; }
+
+protected:
+	int PlayerIndex;
+	CSteamID SteamID;
+	bool bStats;
+};
+
 /**
  * @brief Sample implementation of the SDK Extension.
  * Note: Uncomment one of the pre-defined virtual functions in order to use it.

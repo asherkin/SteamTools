@@ -99,7 +99,7 @@ endif
 ifeq "$(USEMETA)" "true"
 	LINK_HL2 = $(HL2LIB)/tier1_i486.a $(LIB_PREFIX)vstdlib$(LIB_SUFFIX) $(LIB_PREFIX)tier0$(LIB_SUFFIX)
 
-	LINK += $(LIB_PREFIX)steam_api$(LIB_SUFFIX) steamclient$(LIB_SUFFIX)
+#	LINK += $(LIB_PREFIX)steam_api$(LIB_SUFFIX) steamclient$(LIB_SUFFIX)
 	LINK += $(LINK_HL2)
 
 	INCLUDE += -I. -Isdk
@@ -163,8 +163,8 @@ all: check
 		ln -sf $(HL2LIB)/$(LIB_PREFIX)vstdlib$(LIB_SUFFIX); \
 		ln -sf $(HL2LIB)/$(LIB_PREFIX)tier0$(LIB_SUFFIX); \
 	fi
-	ln -sf $(SRCDS)/bin/$(LIB_PREFIX)steam_api$(LIB_SUFFIX); \
-	ln -sf $(SRCDS)/bin/steamclient$(LIB_SUFFIX); \
+#	ln -sf $(SRCDS)/bin/$(LIB_PREFIX)steam_api$(LIB_SUFFIX); \
+#	ln -sf $(SRCDS)/bin/steamclient$(LIB_SUFFIX); \
 	$(MAKE) -f Makefile extension
 
 check:

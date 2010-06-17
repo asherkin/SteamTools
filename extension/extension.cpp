@@ -58,16 +58,25 @@ ICvar *g_pLocalCVar = NULL;
 ISteamGameServer008 *g_pSteamGameServer = NULL;
 ISteamMasterServerUpdater001 *g_pSteamMasterServerUpdater = NULL;
 ISteamUtils005 *g_pSteamUtils = NULL;
+ISteamGameServerStats001 *g_pSteamGameServerStats = NULL;
 
 ISteamGameServer010 *g_pSteamGameServer010 = NULL;
 
 SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
+CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
+CUtlVector<CStatsClient> g_StatsClients;
 
 typedef HSteamPipe (*GetPipeFn)();
 typedef HSteamUser (*GetUserFn)();
 
+typedef bool (*GetCallbackFn)(HSteamPipe hSteamPipe, CallbackMsg_t *pCallbackMsg);
+typedef void (*FreeLastCallbackFn)(HSteamPipe hSteamPipe);
+
 GetPipeFn g_GameServerSteamPipe;
 GetUserFn g_GameServerSteamUser;
+
+GetCallbackFn GetCallback;
+FreeLastCallbackFn FreeLastCallback;
 
 int g_GameFrameHookID = 0;
 int g_WasRestartRequestedHookID = 0;
@@ -111,7 +120,7 @@ void Hook_GameFrame(bool simulating)
 	if(g_pSteamGameServer)
 	{
 		CallbackMsg_t callbackMsg;
-		if (Steam_BGetCallback(g_GameServerSteamPipe(), &callbackMsg))
+		if (GetCallback(g_GameServerSteamPipe(), &callbackMsg))
 		{
 			switch (callbackMsg.m_iCallback)
 			{
@@ -126,7 +135,7 @@ void Hook_GameFrame(bool simulating)
 						g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bOfficer);
 						g_pForwardGroupStatusResult->Execute(&cellResults);
 
-						Steam_FreeLastCallback(g_GameServerSteamPipe());
+						FreeLastCallback(g_GameServerSteamPipe());
 						break;
 				}
 			case GSGameplayStats_t::k_iCallback:
@@ -143,7 +152,7 @@ void Hook_GameFrame(bool simulating)
 					} else {
 						g_pSM->LogError(myself, "Server Gameplay Stats received with an unexpected eResult. (eResult = %d)", GameplayStats->m_eResult);
 					}
-					Steam_FreeLastCallback(g_GameServerSteamPipe());
+					FreeLastCallback(g_GameServerSteamPipe());
 					break;
 				}
 			case SteamServersConnected_t::k_iCallback:
@@ -198,8 +207,52 @@ void Hook_GameFrame(bool simulating)
 						}
 
 						g_SteamAPICall = k_uAPICallInvalid;
-						Steam_FreeLastCallback(g_GameServerSteamPipe());
+						FreeLastCallback(g_GameServerSteamPipe());
+					} else if (int elem = g_RequestUserStatsSteamAPICalls.Find(APICallComplete->m_hAsyncCall) != -1) {
+						GSStatsReceived_t StatsReceived;
+						bool bFailed = false;
+						g_pSteamUtils->GetAPICallResult(APICallComplete->m_hAsyncCall, &StatsReceived, sizeof(StatsReceived), StatsReceived.k_iCallback, &bFailed);
+						if (bFailed)
+						{
+							ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(APICallComplete->m_hAsyncCall);
+							g_pSM->LogError(myself, "Getting stats failed. (ESteamAPICallFailure = %d)", failureReason);
+						} else {
+							if (StatsReceived.m_eResult == k_EResultOK)
+							{
+								for ( int i = 0; i < g_StatsClients.Count(); ++i )
+								{
+									if (g_StatsClients.Element(i) == StatsReceived.m_steamIDUser)
+									{
+										g_StatsClients.Element(i).HasStats(true);
+										break;
+									}
+								}
+							} else if (StatsReceived.m_eResult == k_EResultFail) {
+								g_pSM->LogError(myself, "Getting stats for user %s failed, backend reported that the user has no stats.", StatsReceived.m_steamIDUser.Render());
+							} else {
+								g_pSM->LogError(myself, "Stats for user %s received with an unexpected eResult. (eResult = %d)", StatsReceived.m_steamIDUser.Render(), StatsReceived.m_eResult);
+							}
+						}
+
+						g_RequestUserStatsSteamAPICalls.Remove(elem);
+						FreeLastCallback(g_GameServerSteamPipe());
 					}
+					break;
+				}
+			case GSStatsUnloaded_t::k_iCallback:
+				{
+					GSStatsUnloaded_t *StatsUnloaded = (GSStatsUnloaded_t *)callbackMsg.m_pubParam;
+
+					for ( int i = 0; i < g_StatsClients.Count(); ++i )
+					{
+						if (g_StatsClients.Element(i) == StatsUnloaded->m_steamIDUser)
+						{
+							g_StatsClients.Element(i).HasStats(false);
+							break;
+						}
+					}
+
+					FreeLastCallback(g_GameServerSteamPipe());
 					break;
 				}
 			default:
@@ -212,31 +265,34 @@ void Hook_GameFrame(bool simulating)
 	} else {
 
 #if defined _WIN32
-		CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(GetModuleHandleA("steamclient.dll"), "CreateInterface");
-		ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
+		HMODULE steamclient_library = GetModuleHandle("steamclient.dll");
 
-		HMODULE steamapi = GetModuleHandleA("steam_api.dll");
+		CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
 
-		g_GameServerSteamPipe = (GetPipeFn)GetProcAddress(steamapi, "SteamGameServer_GetHSteamPipe");
-		g_GameServerSteamUser = (GetUserFn)GetProcAddress(steamapi, "SteamGameServer_GetHSteamUser");
+		GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
+		FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
+
+		HMODULE steam_api_library = GetModuleHandle("steam_api.dll");
+
+		g_GameServerSteamPipe = (GetPipeFn)GetProcAddress(steam_api_library, "SteamGameServer_GetHSteamPipe");
+		g_GameServerSteamUser = (GetUserFn)GetProcAddress(steam_api_library, "SteamGameServer_GetHSteamUser");
 #elif defined _LINUX
-		void* steamclient_library = dlopen("steamclient.so", RTLD_LAZY);
+		void* steamclient_library = dlopen("steamclient.so", RTLD_NOW);
+		
+		CreateInterfaceFn steamclient = dlsym(steamclient_library, "CreateInterface");
 
-		CreateInterfaceFn steamclient = (CreateInterfaceFn)dlsym(steamclient_library, "CreateInterface");
-		ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
+		GetCallback = (GetCallbackFn)dlsym(steamclient_library, "Steam_BGetCallback");
+		FreeLastCallback = (FreeLastCallbackFn)dlsym(steamclient_library, "Steam_FreeLastCallback");
 
-		dlclose(steamclient_library);
-
-		void* steam_api_library = dlopen("libsteam_api.so", RTLD_LAZY);
+		void* steam_api_library = dlopen("libsteam_api.so", RTLD_NOW);
 
 		g_GameServerSteamPipe = (GetPipeFn)dlsym(steam_api_library, "SteamGameServer_GetHSteamPipe");
 		g_GameServerSteamUser = (GetUserFn)dlsym(steam_api_library, "SteamGameServer_GetHSteamUser");
-
-		dlclose(steam_api_library);
 #else
 		// report error ...
 		return;
 #endif
+		ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 
 		g_pSM->LogMessage(myself, "Steam library loading complete.");
 
@@ -249,6 +305,7 @@ void Hook_GameFrame(bool simulating)
 		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGameServer(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamMasterServerUpdater(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
 		g_pSteamUtils = (ISteamUtils005 *)client->GetISteamUtils(g_GameServerSteamPipe(), STEAMUTILS_INTERFACE_VERSION_005);
+		g_pSteamGameServerStats = (ISteamGameServerStats001 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamUser(), STEAMGAMESERVERSTATS_INTERFACE_VERSION_001);
 
 		g_pSteamGameServer010 = (ISteamGameServer010 *)client->GetISteamGameServer(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
 
