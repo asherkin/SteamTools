@@ -31,9 +31,11 @@
 
 #include <sourcemod>
 
+#define AUTOLOAD_EXTENSIONS
+#define REQUIRE_EXTENSIONS
 #include <steamtools>
 
-#define PLUGIN_VERSION "0.2.0"
+#define PLUGIN_VERSION "0.2.1"
 
 public Plugin:myinfo = {
 	name        = "SteamTools Tester",
@@ -42,10 +44,6 @@ public Plugin:myinfo = {
 	version     = PLUGIN_VERSION,
 	url         = "http://limetech.org/"
 };
-
-// START Loading Code
-
-new bool:g_SteamToolsAvailable = false;
 
 public OnPluginStart()
 {
@@ -58,43 +56,10 @@ public OnPluginStart()
 	RegAdminCmd("sm_printvacstatus", Command_VACStatus, ADMFLAG_ROOT, "Shows the current VAC status.");
 	RegAdminCmd("sm_printconnectionstatus", Command_ConnectionStatus, ADMFLAG_ROOT, "Shows the current Steam connection status.");
 	RegAdminCmd("sm_printip", Command_PrintIP, ADMFLAG_ROOT, "Shows the server's current external IP address.");
-
-	g_SteamToolsAvailable = LibraryExists("SteamTools");
 }
- 
-public OnLibraryRemoved(const String:name[])
-{
-	if (StrEqual(name, "SteamTools"))
-	{
-		g_SteamToolsAvailable = false;
-	}
-}
- 
-public OnLibraryAdded(const String:name[])
-{
-	if (StrEqual(name, "SteamTools"))
-	{
-		new String:myFilename[64];
-		new Handle:myself = GetMyHandle();
-		GetPluginFilename(myself, myFilename, 64);
-		ServerCommand("sm plugins reload %s", myFilename);
-	}
-}
-
-public OnClientAuthorized(client, const String:auth[])
-{
-	if (!g_SteamToolsAvailable)
-	{
-		ServerCommand("sm exts load %s", "steamtools");
-	}
-}
-
-// END Loading Code
 
 public Action:Command_GroupStatus(client, args)
 {
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
 	if (args != 2)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_groupstatus <client> <group>");
@@ -142,8 +107,6 @@ public Action:Command_GroupStatus(client, args)
 
 public Action:Command_GameplayStats(client, args)
 {
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
 	Steam_RequestGameplayStats();
 	ReplyToCommand(client, "[SM] Gameplay Stats Requested.");
 	return Plugin_Handled;
@@ -151,8 +114,6 @@ public Action:Command_GameplayStats(client, args)
 
 public Action:Command_ServerReputation(client, args)
 {
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
 	Steam_RequestServerReputation();
 	ReplyToCommand(client, "[SM] Server Reputation Requested.");
 	return Plugin_Handled;
@@ -160,8 +121,6 @@ public Action:Command_ServerReputation(client, args)
 
 public Action:Command_Heartbeat(client, args)
 {
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
 	Steam_ForceHeartbeat();
 	ReplyToCommand(client, "[SM] Heartbeat Sent.");
 	return Plugin_Handled;
@@ -169,24 +128,18 @@ public Action:Command_Heartbeat(client, args)
 
 public Action:Command_VACStatus(client, args)
 {
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
 	ReplyToCommand(client, "[SM] VAC is %s.", Steam_IsVACEnabled()?"active":"not active");
 	return Plugin_Handled;
 }
 
 public Action:Command_ConnectionStatus(client, args)
 {
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
 	ReplyToCommand(client, "[SM] %s to Steam servers.", Steam_IsConnected()?"Connected":"Not connected");
 	return Plugin_Handled;
 }
 
 public Action:Command_PrintIP(client, args)
 {
-	if (!g_SteamToolsAvailable) return Plugin_Continue;
-	
 	new octets[4];
 	Steam_GetPublicIP(octets);
 	ReplyToCommand(client, "[SM] Server IP Address: %d.%d.%d.%d", octets[0], octets[1], octets[2], octets[3]);

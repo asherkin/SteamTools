@@ -50,17 +50,14 @@ public Extension:__ext_SteamTools =
 {
 	name = "SteamTools",
 	file = "steamtools.ext",
+#if defined AUTOLOAD_EXTENSIONS
+	autoload = 1,
+#else
 	autoload = 0,
+#endif
+#if defined REQUIRE_EXTENSIONS
+	required = 1,
+#else
 	required = 0,
-}
-
-public __ext_SteamTools_SetNTVOptional()
-{
-	MarkNativeAsOptional("Steam_RequestGroupStatus");
-	MarkNativeAsOptional("Steam_RequestGameplayStats");
-	MarkNativeAsOptional("Steam_RequestServerReputation");
-	MarkNativeAsOptional("Steam_ForceHeartbeat");
-	MarkNativeAsOptional("Steam_IsVACEnabled");
-	MarkNativeAsOptional("Steam_IsConnected");
-	MarkNativeAsOptional("Steam_GetPublicIP");
+#endif
 }
