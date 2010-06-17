@@ -37,6 +37,7 @@
 
 #include "smsdk_ext.h"
 
+#define NO_CSTEAMID_STL
 #define INTERFACEOSW_H
 #include <Steamworks.h>
 
