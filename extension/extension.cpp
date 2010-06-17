@@ -279,7 +279,7 @@ void Hook_GameFrame(bool simulating)
 #elif defined _LINUX
 		void* steamclient_library = dlopen("steamclient.so", RTLD_NOW);
 		
-		CreateInterfaceFn steamclient = dlsym(steamclient_library, "CreateInterface");
+		CreateInterfaceFn steamclient = (CreateInterfaceFn)dlsym(steamclient_library, "CreateInterface");
 
 		GetCallback = (GetCallbackFn)dlsym(steamclient_library, "Steam_BGetCallback");
 		FreeLastCallback = (FreeLastCallbackFn)dlsym(steamclient_library, "Steam_FreeLastCallback");
