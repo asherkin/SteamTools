@@ -82,6 +82,7 @@ int g_GameFrameHookID = 0;
 int g_WasRestartRequestedHookID = 0;
 
 bool g_SteamServersConnected = false;
+bool g_SteamLoadFailed = false;
 
 IForward * g_pForwardGroupStatusResult = NULL;
 IForward * g_pForwardGameplayStats = NULL;
@@ -257,7 +258,7 @@ void Hook_GameFrame(bool simulating)
 				}
 			default:
 				{
-					//g_SMAPI->ConPrintf("Unhandled Callback: %d", callbackMsg.m_iCallback);
+					//g_SMAPI->ConPrintf("Unhandled Callback: %d\n", callbackMsg.m_iCallback);
 					break;
 				}
 			}
@@ -292,6 +293,7 @@ void Hook_GameFrame(bool simulating)
 		// report error ...
 		return;
 #endif
+
 		ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 
 		g_pSM->LogMessage(myself, "Steam library loading complete.");
@@ -300,20 +302,49 @@ void Hook_GameFrame(bool simulating)
 		if(g_GameServerSteamPipe() == 0 || g_GameServerSteamUser() == 0)
 			return;
 
+		//g_pSM->LogMessage(myself, "Pipe = %d, User = %d.", g_GameServerSteamPipe(), g_GameServerSteamUser());
+
 		g_pSM->LogMessage(myself, "Acquiring interfaces and hooking functions...");
 
-		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGameServer(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
-		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamMasterServerUpdater(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
-		g_pSteamUtils = (ISteamUtils005 *)client->GetISteamUtils(g_GameServerSteamPipe(), STEAMUTILS_INTERFACE_VERSION_005);
+		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
+		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
+		g_pSteamUtils = (ISteamUtils005 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMUTILS_INTERFACE_VERSION_005);
 		g_pSteamGameServerStats = (ISteamGameServerStats001 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamUser(), STEAMGAMESERVERSTATS_INTERFACE_VERSION_001);
 
-		g_pSteamGameServer010 = (ISteamGameServer010 *)client->GetISteamGameServer(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
+		g_pSteamGameServer010 = (ISteamGameServer010 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
+
+		if (!CheckInterfaces())
+			return;
 
 		g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), false);
 
 		g_pSM->LogMessage(myself, "Loading complete.");
 
 		g_SteamServersConnected = g_pSteamGameServer->LoggedOn();
+	}
+}
+
+bool CheckInterfaces() 
+{
+	if (!g_pSteamGameServer ||
+		!g_pSteamMasterServerUpdater ||
+		!g_pSteamUtils ||
+		!g_pSteamGameServerStats ||
+		!g_pSteamGameServer010)
+	{
+		g_SteamLoadFailed = true;
+		
+		if (g_GameFrameHookID != 0)
+		{
+			SH_REMOVE_HOOK_ID(g_GameFrameHookID);
+			g_GameFrameHookID = 0;
+		}
+
+		g_pSM->LogError(myself, "One or more SteamWorks interfaces failed to be acquired.");
+
+		return false;
+	} else {
+		return true;
 	}
 }
 
@@ -406,6 +437,16 @@ void SteamTools::SDK_OnUnload()
 
 	g_pForwards->ReleaseForward(g_pForwardSteamServersConnected);
 	g_pForwards->ReleaseForward(g_pForwardSteamServersDisconnected);
+}
+
+bool SteamTools::QueryRunning( char *error, size_t maxlen )
+{
+	if (g_SteamLoadFailed)
+	{
+		snprintf(error, maxlen, "One or more SteamWorks interfaces failed to be acquired.");
+		return false;
+	}
+	return true;
 }
 
 static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)

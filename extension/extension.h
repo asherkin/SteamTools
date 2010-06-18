@@ -119,7 +119,7 @@ public:
 	 * @param maxlength	Size of error message buffer.
 	 * @return			True if working, false otherwise.
 	 */
-	//virtual bool QueryRunning(char *error, size_t maxlen);
+	virtual bool QueryRunning(char *error, size_t maxlen);
 public:
 #if defined SMEXT_CONF_METAMOD
 	/**
@@ -168,4 +168,5 @@ static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params);
 static cell_t IsConnected(IPluginContext *pContext, const cell_t *params);
 static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params);
 CSteamID SteamIDToCSteamID(const char *steamID);
+bool CheckInterfaces();
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
