@@ -45,6 +45,14 @@ public Plugin:myinfo = {
 	url         = "http://limetech.org/"
 };
 
+new ReplySource:Async_GroupStatus_Reply;
+new ReplySource:Async_GameplayStats_Reply;
+new ReplySource:Async_ServerReputation_Reply;
+
+new Async_GroupStatus_Client;
+new Async_GameplayStats_Client;
+new Async_ServerReputation_Client;
+
 public OnPluginStart()
 {
 	LoadTranslations("common.phrases");
@@ -101,7 +109,10 @@ public Action:Command_GroupStatus(client, args)
 	}
 
 	ReplyToCommand(client, "[SM] %s.", didLastRequestWork?"Group status requested":"Error in requesting group status, not connected to Steam");
-	 
+
+	Async_GroupStatus_Client = client;
+	Async_GroupStatus_Reply = GetCmdReplySource();
+
 	return Plugin_Handled;
 }
 
@@ -109,6 +120,10 @@ public Action:Command_GameplayStats(client, args)
 {
 	Steam_RequestGameplayStats();
 	ReplyToCommand(client, "[SM] Gameplay Stats Requested.");
+
+	Async_GameplayStats_Client = client;
+	Async_GameplayStats_Reply = GetCmdReplySource();
+
 	return Plugin_Handled;
 }
 
@@ -116,6 +131,10 @@ public Action:Command_ServerReputation(client, args)
 {
 	Steam_RequestServerReputation();
 	ReplyToCommand(client, "[SM] Server Reputation Requested.");
+
+	Async_ServerReputation_Client = client;
+	Async_ServerReputation_Reply = GetCmdReplySource();
+
 	return Plugin_Handled;
 }
 
@@ -155,7 +174,10 @@ public Action:Steam_GroupStatusResult(String:clientAuthString[64], groupAccountI
 		GetClientAuthString(i, authBuffer, 64);
 		if (StrEqual(clientAuthString, authBuffer))
 		{
-			PrintToChatAll("[SM] %N is %s in group %d.", i, groupMember?(groupOfficer?"an officer":"a member"):"not a member", groupAccountID);
+			SetCmdReplySource(Async_GroupStatus_Reply);
+			ReplyToCommand(Async_GroupStatus_Client, "[SM] %N is %s in group %d.", i, groupMember?(groupOfficer?"an officer":"a member"):"not a member", groupAccountID);
+			Async_GroupStatus_Reply = SM_REPLY_TO_CONSOLE;
+			Async_GroupStatus_Client = 0;
 			break;
 		}
 	}
@@ -164,19 +186,25 @@ public Action:Steam_GroupStatusResult(String:clientAuthString[64], groupAccountI
 
 public Action:Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed)
 {
-	PrintToChatAll("[SM] Rank: %d. Total Connects: %d. Total Minutes Played: %d.", rank, totalConnects, totalMinutesPlayed);
+	SetCmdReplySource(Async_GameplayStats_Reply);
+	ReplyToCommand(Async_GameplayStats_Client, "[SM] Rank: %d. Total Connects: %d. Total Minutes Played: %d.", rank, totalConnects, totalMinutesPlayed);
+	Async_GameplayStats_Reply = SM_REPLY_TO_CONSOLE;
+	Async_GameplayStats_Client = 0;
 	return Plugin_Continue;
 }
 
 public Action:Steam_Reputation(reputationScore, bool:banned, bannedIP, bannedPort, bannedGameID, banExpires)
 {
-	PrintToChatAll("[SM] Reputation Score: %d. Banned: %s.", reputationScore, banned?"true":"false");
+	SetCmdReplySource(Async_ServerReputation_Reply);
+	ReplyToCommand(Async_ServerReputation_Client, "[SM] Reputation Score: %d. Banned: %s.", reputationScore, banned?"true":"false");
+	Async_ServerReputation_Reply = SM_REPLY_TO_CONSOLE;
+	Async_ServerReputation_Client = 0;
 	return Plugin_Continue;
 }
 
 public Action:Steam_RestartRequested()
 {
-	PrintToChatAll("[SM] Server needs to be restarted due to an update.");
+	PrintToServer("[SM] Server needs to be restarted due to an update.");
 	return Plugin_Continue;
 }
 
