@@ -34,6 +34,7 @@
  * AzuiSleet          - Wrote the original example code to acquire the SteamClient
  *                      factory.
  * VoiDeD & AzuiSleet - The OpenSteamworks project.
+ * Didrole            - Linux autoloading.
  * =============================================================================
  */
 
@@ -50,7 +51,7 @@ SMEXT_LINK(&g_SteamTools);
 SH_DECL_HOOK1_void(IServerGameDLL, GameFrame, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK0(ISteamMasterServerUpdater001, WasRestartRequested, SH_NOATTRIB, 0, bool);
 
-ConVar GroupSteamID("steamtools_version", SMEXT_CONF_VERSION, FCVAR_NOTIFY|FCVAR_REPLICATED, SMEXT_CONF_DESCRIPTION);
+ConVar SteamToolsVersion("steamtools_version", SMEXT_CONF_VERSION, FCVAR_NOTIFY|FCVAR_REPLICATED, SMEXT_CONF_DESCRIPTION);
 
 IServerGameDLL *g_pServerGameDLL = NULL;
 ICvar *g_pLocalCVar = NULL;
@@ -64,7 +65,7 @@ ISteamGameServer010 *g_pSteamGameServer010 = NULL;
 
 SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
-CUtlVector<CStatsClient> g_StatsClients;
+CUtlVector<CSteamClient> g_StatsClients;
 
 typedef HSteamPipe (*GetPipeFn)();
 typedef HSteamUser (*GetUserFn)();
@@ -84,13 +85,16 @@ int g_WasRestartRequestedHookID = 0;
 bool g_SteamServersConnected = false;
 bool g_SteamLoadFailed = false;
 
-IForward * g_pForwardGroupStatusResult = NULL;
-IForward * g_pForwardGameplayStats = NULL;
-IForward * g_pForwardReputation = NULL;
-IForward * g_pForwardRestartRequested = NULL;
+IForward *g_pForwardGroupStatusResult = NULL;
+IForward *g_pForwardGameplayStats = NULL;
+IForward *g_pForwardReputation = NULL;
+IForward *g_pForwardRestartRequested = NULL;
 
-IForward * g_pForwardSteamServersConnected = NULL;
-IForward * g_pForwardSteamServersDisconnected = NULL;
+IForward *g_pForwardSteamServersConnected = NULL;
+IForward *g_pForwardSteamServersDisconnected = NULL;
+
+IForward *g_pForwardClientReceivedStats = NULL;
+IForward *g_pForwardClientUnloadedStats = NULL;
 
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
@@ -101,6 +105,10 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_IsVACEnabled",				IsVACEnabled },
 	{ "Steam_IsConnected",				IsConnected },
 	{ "Steam_GetPublicIP",				GetPublicIP },
+	{ "Steam_RequestStats",				RequestStats },
+	{ "Steam_GetStat",					GetStatInt },
+	{ "Steam_GetStatFloat",				GetStatFloat },
+	{ "Steam_IsAchieved",				IsAchieved },
 	{ NULL,								NULL }
 };
 
@@ -109,8 +117,6 @@ sp_nativeinfo_t g_ExtensionNatives[] =
  * Testing Area:
  * =============================================================================
  */
-
-
 
 /**
  * =============================================================================
@@ -129,12 +135,19 @@ void Hook_GameFrame(bool simulating)
 				{
 						GSClientGroupStatus_t *GroupStatus = (GSClientGroupStatus_t *)callbackMsg.m_pubParam;
 
-						cell_t cellResults = 0;
-						g_pForwardGroupStatusResult->PushString(GroupStatus->m_SteamIDUser.Render());
-						g_pForwardGroupStatusResult->PushCell(GroupStatus->m_SteamIDGroup.GetAccountID());
-						g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bMember);
-						g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bOfficer);
-						g_pForwardGroupStatusResult->Execute(&cellResults);
+						for ( int i = 0; i < g_StatsClients.Count(); ++i )
+						{
+							if (g_StatsClients.Element(i) == GroupStatus->m_SteamIDUser)
+							{
+								cell_t cellResults = 0;
+								g_pForwardGroupStatusResult->PushCell(g_StatsClients.Element(i).GetIndex());
+								g_pForwardGroupStatusResult->PushCell(GroupStatus->m_SteamIDGroup.GetAccountID());
+								g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bMember);
+								g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bOfficer);
+								g_pForwardGroupStatusResult->Execute(&cellResults);
+								break;
+							}
+						}
 
 						FreeLastCallback(g_GameServerSteamPipe());
 						break;
@@ -224,7 +237,9 @@ void Hook_GameFrame(bool simulating)
 								{
 									if (g_StatsClients.Element(i) == StatsReceived.m_steamIDUser)
 									{
-										g_StatsClients.Element(i).HasStats(true);
+										cell_t cellResults = 0;
+										g_pForwardClientReceivedStats->PushCell(g_StatsClients.Element(i).GetIndex());
+										g_pForwardClientReceivedStats->Execute(&cellResults);
 										break;
 									}
 								}
@@ -240,6 +255,12 @@ void Hook_GameFrame(bool simulating)
 					}
 					break;
 				}
+			case GSStatsReceived_t::k_iCallback:
+				{
+					// The handler above dealt with this anyway, stop this getting to the engine.
+					FreeLastCallback(g_GameServerSteamPipe());
+					break;
+				}
 			case GSStatsUnloaded_t::k_iCallback:
 				{
 					GSStatsUnloaded_t *StatsUnloaded = (GSStatsUnloaded_t *)callbackMsg.m_pubParam;
@@ -248,7 +269,9 @@ void Hook_GameFrame(bool simulating)
 					{
 						if (g_StatsClients.Element(i) == StatsUnloaded->m_steamIDUser)
 						{
-							g_StatsClients.Element(i).HasStats(false);
+							cell_t cellResults = 0;
+							g_pForwardClientUnloadedStats->PushCell(g_StatsClients.Element(i).GetIndex());
+							g_pForwardClientUnloadedStats->Execute(&cellResults);
 							break;
 						}
 					}
@@ -296,7 +319,7 @@ void Hook_GameFrame(bool simulating)
 
 		ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 
-		g_pSM->LogMessage(myself, "Steam library loading complete.");
+		//g_pSM->LogMessage(myself, "Steam library loading complete.");
 
 		// let's not get impatient
 		if(g_GameServerSteamPipe() == 0 || g_GameServerSteamUser() == 0)
@@ -304,7 +327,7 @@ void Hook_GameFrame(bool simulating)
 
 		//g_pSM->LogMessage(myself, "Pipe = %d, User = %d.", g_GameServerSteamPipe(), g_GameServerSteamUser());
 
-		g_pSM->LogMessage(myself, "Acquiring interfaces and hooking functions...");
+		//g_pSM->LogMessage(myself, "Acquiring interfaces and hooking functions...");
 
 		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
@@ -364,8 +387,9 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 	g_pShareSys->AddNatives(myself, g_ExtensionNatives);
 	g_pShareSys->RegisterLibrary(myself, "SteamTools");
+	playerhelpers->AddClientListener(&g_SteamTools);
 
-	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 4, NULL, Param_String, Param_Cell, Param_Cell, Param_Cell);
+	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 4, NULL, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardGameplayStats = g_pForwards->CreateForward("Steam_GameplayStats", ET_Ignore, 3, NULL, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardReputation = g_pForwards->CreateForward("Steam_Reputation", ET_Ignore, 6, NULL, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardRestartRequested = g_pForwards->CreateForward("Steam_RestartRequested", ET_Ignore, 0, NULL);
@@ -373,9 +397,30 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	g_pForwardSteamServersConnected = g_pForwards->CreateForward("Steam_SteamServersConnected", ET_Ignore, 0, NULL);
 	g_pForwardSteamServersDisconnected = g_pForwards->CreateForward("Steam_SteamServersDisconnected", ET_Ignore, 0, NULL);
 
+	g_pForwardClientReceivedStats = g_pForwards->CreateForward("Steam_StatsReceived", ET_Ignore, 1, NULL, Param_Cell);
+	g_pForwardClientUnloadedStats = g_pForwards->CreateForward("Steam_StatsUnloaded", ET_Ignore, 1, NULL, Param_Cell);
+
 	g_pSM->LogMessage(myself, "Initial loading stage complete...");
 
 	return true;
+}
+
+void SteamTools::OnClientAuthorized(int client, const char *authstring)
+{
+	CSteamID steamID = SteamIDToCSteamID(authstring);
+	g_StatsClients.AddToTail(CSteamClient(client, steamID));
+}
+
+void SteamTools::OnClientDisconnecting(int client)
+{
+	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	{
+		if (g_StatsClients.Element(i) == client)
+		{
+			g_StatsClients.Remove(i);
+			break;
+		}
+	}
 }
 
 bool Hook_WasRestartRequested()
@@ -451,9 +496,14 @@ bool SteamTools::QueryRunning( char *error, size_t maxlen )
 
 static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
 {
-	char * strUserID;
-	pContext->LocalToString(params[1], &strUserID);
-	return g_pSteamGameServer->RequestUserGroupStatus(SteamIDToCSteamID(strUserID), CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));
+	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	{
+		if (g_StatsClients.Element(i) == params[1])
+		{
+			return g_pSteamGameServer->RequestUserGroupStatus(g_StatsClients.Element(i).GetSteamID(), CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));
+		}
+	}
+	return 0;
 }
 
 static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params)
@@ -508,6 +558,82 @@ static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params)
 	addr[3] = octet[0];
 
 	return 0;
+}
+
+static cell_t RequestStats(IPluginContext *pContext, const cell_t *params)
+{
+	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	{
+		if (g_StatsClients.Element(i) == params[1])
+		{
+			g_RequestUserStatsSteamAPICalls.AddToTail(g_pSteamGameServerStats->RequestUserStats(g_StatsClients.Element(i).GetSteamID()));
+			break;
+		}
+	}
+	return 0;
+}
+
+static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params)
+{
+	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	{
+		if (g_StatsClients.Element(i) == params[1])
+		{
+			int32 data;
+			char *strStatName;
+			pContext->LocalToString(params[2], &strStatName);
+			if (g_pSteamGameServerStats->GetUserStat(g_StatsClients.Element(i).GetSteamID(), strStatName, &data))
+			{
+				return data;
+			} else {
+				return pContext->ThrowNativeError("Failed to get stat %s for client %d", strStatName, params[1]);
+			}
+			break;
+		}
+	}
+	return pContext->ThrowNativeError("No g_StatsClients entry found for client %d", params[1]);
+}
+
+static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params)
+{
+	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	{
+		if (g_StatsClients.Element(i) == params[1])
+		{
+			float data;
+			char *strStatName;
+			pContext->LocalToString(params[2], &strStatName);
+			if (g_pSteamGameServerStats->GetUserStat(g_StatsClients.Element(i).GetSteamID(), strStatName, &data))
+			{
+				return sp_ftoc(data);
+			} else {
+				return pContext->ThrowNativeError("Failed to get stat %s for client %d", strStatName, params[1]);
+			}
+			break;
+		}
+	}
+	return pContext->ThrowNativeError("No g_StatsClients entry found for client %d", params[1]);
+}
+
+static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params)
+{
+	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	{
+		if (g_StatsClients.Element(i) == params[1])
+		{
+			bool bAchieved;
+			char *strAchName;
+			pContext->LocalToString(params[2], &strAchName);
+			if (g_pSteamGameServerStats->GetUserAchievement(g_StatsClients.Element(i).GetSteamID(), strAchName, &bAchieved))
+			{
+				return bAchieved;
+			} else {
+				return pContext->ThrowNativeError("Failed to get achievement %s for client %d", strAchName, params[1]);
+			}
+			break;
+		}
+	}
+	return pContext->ThrowNativeError("No g_StatsClients entry found for client %d", params[1]);
 }
 
 CSteamID SteamIDToCSteamID(const char *steamID)

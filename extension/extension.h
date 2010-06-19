@@ -41,21 +41,20 @@
 #define INTERFACEOSW_H
 #include <Steamworks.h>
 
-class CStatsClient
+class CSteamClient
 {
 public:
-	CStatsClient(int PlayerIndex, CSteamID SteamID)
+	CSteamClient(int PlayerIndex, CSteamID SteamID)
 	{
 		this->PlayerIndex = PlayerIndex;
 		this->SteamID = SteamID;
-		this->bStats = false;
 	}
 
-	bool operator==(const CStatsClient &other) const {
+	bool operator==(const CSteamClient &other) const {
 		return this->SteamID == other.SteamID;
 	}
 
-	bool operator!=(const CStatsClient &other) const {
+	bool operator!=(const CSteamClient &other) const {
 		return !(*this == other);
 	}
 
@@ -76,20 +75,19 @@ public:
 	}
 
 public:
-	bool HasStats() const { return bStats; }
-	void HasStats(bool val) { bStats = val; }
+	int GetIndex() const { return PlayerIndex; }
+	CSteamID GetSteamID() const { return SteamID; }
 
 protected:
 	int PlayerIndex;
 	CSteamID SteamID;
-	bool bStats;
 };
 
 /**
  * @brief Sample implementation of the SDK Extension.
  * Note: Uncomment one of the pre-defined virtual functions in order to use it.
  */
-class SteamTools : public SDKExtension, public IConCommandBaseAccessor
+class SteamTools : public SDKExtension, public IConCommandBaseAccessor, public IClientListener
 {
 public:
 	/**
@@ -156,6 +154,10 @@ public:
 
 public: //IConCommandBaseAccessor
 	bool RegisterConCommandBase(ConCommandBase *pCommand);
+
+public: //IClientListener
+	void OnClientAuthorized(int client, const char *authstring);
+	void OnClientDisconnecting(int client);
 };
 
 void Hook_GameFrame(bool simulating);
@@ -167,6 +169,10 @@ static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params);
 static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params);
 static cell_t IsConnected(IPluginContext *pContext, const cell_t *params);
 static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params);
+static cell_t RequestStats(IPluginContext *pContext, const cell_t *params);
+static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params);
+static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params);
+static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params);
 CSteamID SteamIDToCSteamID(const char *steamID);
 bool CheckInterfaces();
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

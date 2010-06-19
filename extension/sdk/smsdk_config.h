@@ -37,8 +37,8 @@
 
 /* Basic information exposed publicly */
 #define SMEXT_CONF_NAME			"SteamTools"
-#define SMEXT_CONF_DESCRIPTION	"Exposes some SteamWorks functions to SourceMod plugins."
-#define SMEXT_CONF_VERSION		"0.2.1"
+#define SMEXT_CONF_DESCRIPTION	"SteamWorks for SourceMod."
+#define SMEXT_CONF_VERSION		"0.3.0"
 #define SMEXT_CONF_AUTHOR		"Asher Baker (asherkin)"
 #define SMEXT_CONF_URL			"http://limetech.org/"
 #define SMEXT_CONF_LOGTAG		"STEAMTOOLS"
@@ -59,7 +59,7 @@
 /** Enable interfaces you want to use here by uncommenting lines */
 #define SMEXT_ENABLE_FORWARDSYS
 //#define SMEXT_ENABLE_HANDLESYS
-//#define SMEXT_ENABLE_PLAYERHELPERS
+#define SMEXT_ENABLE_PLAYERHELPERS
 //#define SMEXT_ENABLE_DBMANAGER
 //#define SMEXT_ENABLE_GAMECONF
 //#define SMEXT_ENABLE_MEMUTILS
