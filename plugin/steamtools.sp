@@ -44,7 +44,10 @@ public OnPluginStart()
 
 public OnClientAuthorized(client, const String:auth[])
 {
-	Steam_RequestStats(client);
+	if (!IsFakeClient(client))
+	{
+		Steam_RequestStats(client);
+	}
 }
 
 public OnClientDisconnect(client)

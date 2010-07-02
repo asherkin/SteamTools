@@ -65,7 +65,7 @@ ISteamGameServer010 *g_pSteamGameServer010 = NULL;
 
 SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
-CUtlVector<CSteamClient> g_StatsClients;
+CUtlVector<CSteamClient> g_SteamClients;
 
 typedef HSteamPipe (*GetPipeFn)();
 typedef HSteamUser (*GetUserFn)();
@@ -135,12 +135,12 @@ void Hook_GameFrame(bool simulating)
 				{
 						GSClientGroupStatus_t *GroupStatus = (GSClientGroupStatus_t *)callbackMsg.m_pubParam;
 
-						for ( int i = 0; i < g_StatsClients.Count(); ++i )
+						for ( int i = 0; i < g_SteamClients.Count(); ++i )
 						{
-							if (g_StatsClients.Element(i) == GroupStatus->m_SteamIDUser)
+							if (g_SteamClients.Element(i) == GroupStatus->m_SteamIDUser)
 							{
 								cell_t cellResults = 0;
-								g_pForwardGroupStatusResult->PushCell(g_StatsClients.Element(i).GetIndex());
+								g_pForwardGroupStatusResult->PushCell(g_SteamClients.Element(i).GetIndex());
 								g_pForwardGroupStatusResult->PushCell(GroupStatus->m_SteamIDGroup.GetAccountID());
 								g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bMember);
 								g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bOfficer);
@@ -233,12 +233,12 @@ void Hook_GameFrame(bool simulating)
 						} else {
 							if (StatsReceived.m_eResult == k_EResultOK)
 							{
-								for ( int i = 0; i < g_StatsClients.Count(); ++i )
+								for ( int i = 0; i < g_SteamClients.Count(); ++i )
 								{
-									if (g_StatsClients.Element(i) == StatsReceived.m_steamIDUser)
+									if (g_SteamClients.Element(i) == StatsReceived.m_steamIDUser)
 									{
 										cell_t cellResults = 0;
-										g_pForwardClientReceivedStats->PushCell(g_StatsClients.Element(i).GetIndex());
+										g_pForwardClientReceivedStats->PushCell(g_SteamClients.Element(i).GetIndex());
 										g_pForwardClientReceivedStats->Execute(&cellResults);
 										break;
 									}
@@ -265,12 +265,12 @@ void Hook_GameFrame(bool simulating)
 				{
 					GSStatsUnloaded_t *StatsUnloaded = (GSStatsUnloaded_t *)callbackMsg.m_pubParam;
 
-					for ( int i = 0; i < g_StatsClients.Count(); ++i )
+					for ( int i = 0; i < g_SteamClients.Count(); ++i )
 					{
-						if (g_StatsClients.Element(i) == StatsUnloaded->m_steamIDUser)
+						if (g_SteamClients.Element(i) == StatsUnloaded->m_steamIDUser)
 						{
 							cell_t cellResults = 0;
-							g_pForwardClientUnloadedStats->PushCell(g_StatsClients.Element(i).GetIndex());
+							g_pForwardClientUnloadedStats->PushCell(g_SteamClients.Element(i).GetIndex());
 							g_pForwardClientUnloadedStats->Execute(&cellResults);
 							break;
 						}
@@ -408,16 +408,16 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 void SteamTools::OnClientAuthorized(int client, const char *authstring)
 {
 	CSteamID steamID = SteamIDToCSteamID(authstring);
-	g_StatsClients.AddToTail(CSteamClient(client, steamID));
+	g_SteamClients.AddToTail(CSteamClient(client, steamID));
 }
 
 void SteamTools::OnClientDisconnecting(int client)
 {
-	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
-		if (g_StatsClients.Element(i) == client)
+		if (g_SteamClients.Element(i) == client)
 		{
-			g_StatsClients.Remove(i);
+			g_SteamClients.Remove(i);
 			break;
 		}
 	}
@@ -482,6 +482,8 @@ void SteamTools::SDK_OnUnload()
 
 	g_pForwards->ReleaseForward(g_pForwardSteamServersConnected);
 	g_pForwards->ReleaseForward(g_pForwardSteamServersDisconnected);
+
+	playerhelpers->RemoveClientListener(this);
 }
 
 bool SteamTools::QueryRunning( char *error, size_t maxlen )
@@ -496,11 +498,11 @@ bool SteamTools::QueryRunning( char *error, size_t maxlen )
 
 static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
 {
-	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
-		if (g_StatsClients.Element(i) == params[1])
+		if (g_SteamClients.Element(i) == params[1])
 		{
-			return g_pSteamGameServer->RequestUserGroupStatus(g_StatsClients.Element(i).GetSteamID(), CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));
+			return g_pSteamGameServer->RequestUserGroupStatus(g_SteamClients.Element(i).GetSteamID(), CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));
 		}
 	}
 	return 0;
@@ -562,11 +564,11 @@ static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params)
 
 static cell_t RequestStats(IPluginContext *pContext, const cell_t *params)
 {
-	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
-		if (g_StatsClients.Element(i) == params[1])
+		if (g_SteamClients.Element(i) == params[1])
 		{
-			g_RequestUserStatsSteamAPICalls.AddToTail(g_pSteamGameServerStats->RequestUserStats(g_StatsClients.Element(i).GetSteamID()));
+			g_RequestUserStatsSteamAPICalls.AddToTail(g_pSteamGameServerStats->RequestUserStats(g_SteamClients.Element(i).GetSteamID()));
 			break;
 		}
 	}
@@ -575,14 +577,14 @@ static cell_t RequestStats(IPluginContext *pContext, const cell_t *params)
 
 static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params)
 {
-	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
-		if (g_StatsClients.Element(i) == params[1])
+		if (g_SteamClients.Element(i) == params[1])
 		{
 			int32 data;
 			char *strStatName;
 			pContext->LocalToString(params[2], &strStatName);
-			if (g_pSteamGameServerStats->GetUserStat(g_StatsClients.Element(i).GetSteamID(), strStatName, &data))
+			if (g_pSteamGameServerStats->GetUserStat(g_SteamClients.Element(i).GetSteamID(), strStatName, &data))
 			{
 				return data;
 			} else {
@@ -591,19 +593,19 @@ static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params)
 			break;
 		}
 	}
-	return pContext->ThrowNativeError("No g_StatsClients entry found for client %d", params[1]);
+	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
 }
 
 static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params)
 {
-	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
-		if (g_StatsClients.Element(i) == params[1])
+		if (g_SteamClients.Element(i) == params[1])
 		{
 			float data;
 			char *strStatName;
 			pContext->LocalToString(params[2], &strStatName);
-			if (g_pSteamGameServerStats->GetUserStat(g_StatsClients.Element(i).GetSteamID(), strStatName, &data))
+			if (g_pSteamGameServerStats->GetUserStat(g_SteamClients.Element(i).GetSteamID(), strStatName, &data))
 			{
 				return sp_ftoc(data);
 			} else {
@@ -612,19 +614,19 @@ static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params)
 			break;
 		}
 	}
-	return pContext->ThrowNativeError("No g_StatsClients entry found for client %d", params[1]);
+	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
 }
 
 static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params)
 {
-	for ( int i = 0; i < g_StatsClients.Count(); ++i )
+	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
-		if (g_StatsClients.Element(i) == params[1])
+		if (g_SteamClients.Element(i) == params[1])
 		{
 			bool bAchieved;
 			char *strAchName;
 			pContext->LocalToString(params[2], &strAchName);
-			if (g_pSteamGameServerStats->GetUserAchievement(g_StatsClients.Element(i).GetSteamID(), strAchName, &bAchieved))
+			if (g_pSteamGameServerStats->GetUserAchievement(g_SteamClients.Element(i).GetSteamID(), strAchName, &bAchieved))
 			{
 				return bAchieved;
 			} else {
@@ -633,7 +635,7 @@ static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params)
 			break;
 		}
 	}
-	return pContext->ThrowNativeError("No g_StatsClients entry found for client %d", params[1]);
+	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
 }
 
 CSteamID SteamIDToCSteamID(const char *steamID)
