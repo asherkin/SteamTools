@@ -39,6 +39,7 @@
  */
 
 #include "extension.h"
+#include "filesystem.h"
 
 /**
  * @file extension.cpp
@@ -55,6 +56,7 @@ ConVar SteamToolsVersion("steamtools_version", SMEXT_CONF_VERSION, FCVAR_NOTIFY|
 
 IServerGameDLL *g_pServerGameDLL = NULL;
 ICvar *g_pLocalCVar = NULL;
+IFileSystem *g_pFileSystem = NULL;
 
 ISteamGameServer008 *g_pSteamGameServer = NULL;
 ISteamMasterServerUpdater001 *g_pSteamMasterServerUpdater = NULL;
@@ -289,21 +291,12 @@ void Hook_GameFrame(bool simulating)
 	} else {
 
 #if defined _WIN32
-
-#ifdef USE_OLD_MODULE_LOAD
-		HMODULE steamclient_library = GetModuleHandle("steamclient.dll");
-#elif
-		//IFileSystem *pFileSystem = (IFileSystem *)GetFileSystemFactory(FILESYSTEM_INTERFACE_VERSION, NULL);
-		IFileSystem *pFileSystem = NULL;
-		GET_V_IFACE_CURRENT(GetFileSystemFactory, pFileSystem, IFileSystem, FILESYSTEM_INTERFACE_VERSION);
-
-		if ( !pFileSystem )
-		{
-			g_pSM->LogError(myself, "Unable to get filesystem interface.");
-			return;
-		}
-
-		CSysModule *pModSteamClient = pFileSystem->LoadModule("../bin/steamclient.dll", "MOD", false);
+		CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../bin/steamclient.dll", "MOD", false);
+		CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/steam_api.dll", "MOD", false);
+#elif defined _LINUX
+		CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../bin/steamclient.so", "MOD", false);
+		CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/libsteam_api.so", "MOD", false);
+#endif
 
 		if ( !pModSteamClient )
 		{
@@ -312,33 +305,22 @@ void Hook_GameFrame(bool simulating)
 		}
 
 		HMODULE steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
-#endif
+
+		if ( !pModSteamApi )
+		{
+			g_pSM->LogError(myself, "Unable to get steam_api handle.");
+			return;
+		}
+
+		HMODULE steam_api_library = reinterpret_cast<HMODULE>(pModSteamApi);
 
 		CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
 
 		GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
 		FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
 
-		HMODULE steam_api_library = GetModuleHandle("steam_api.dll");
-
 		g_GameServerSteamPipe = (GetPipeFn)GetProcAddress(steam_api_library, "SteamGameServer_GetHSteamPipe");
 		g_GameServerSteamUser = (GetUserFn)GetProcAddress(steam_api_library, "SteamGameServer_GetHSteamUser");
-#elif defined _LINUX
-		void* steamclient_library = dlopen("steamclient.so", RTLD_NOW);
-		
-		CreateInterfaceFn steamclient = (CreateInterfaceFn)dlsym(steamclient_library, "CreateInterface");
-
-		GetCallback = (GetCallbackFn)dlsym(steamclient_library, "Steam_BGetCallback");
-		FreeLastCallback = (FreeLastCallbackFn)dlsym(steamclient_library, "Steam_FreeLastCallback");
-
-		void* steam_api_library = dlopen("libsteam_api.so", RTLD_NOW);
-
-		g_GameServerSteamPipe = (GetPipeFn)dlsym(steam_api_library, "SteamGameServer_GetHSteamPipe");
-		g_GameServerSteamUser = (GetUserFn)dlsym(steam_api_library, "SteamGameServer_GetHSteamUser");
-#else
-		// report error ...
-		return;
-#endif
 
 		ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 
@@ -449,7 +431,7 @@ void SteamTools::OnClientDisconnecting(int client)
 bool Hook_WasRestartRequested()
 {
 	bool bWasRestartRequested;
-	if (bWasRestartRequested = SH_CALL(g_pSteamMasterServerUpdater, &ISteamMasterServerUpdater001::WasRestartRequested)())
+	if ((bWasRestartRequested = SH_CALL(g_pSteamMasterServerUpdater, &ISteamMasterServerUpdater001::WasRestartRequested)()))
 	{
 		cell_t cellResults = 0;
 		g_pForwardRestartRequested->Execute(&cellResults);
@@ -461,6 +443,7 @@ bool SteamTools::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bo
 {
 	GET_V_IFACE_CURRENT(GetServerFactory, g_pServerGameDLL, IServerGameDLL, INTERFACEVERSION_SERVERGAMEDLL);
 	GET_V_IFACE_CURRENT(GetEngineFactory, g_pLocalCVar, ICvar, CVAR_INTERFACE_VERSION);
+	GET_V_IFACE_CURRENT(GetFileSystemFactory, g_pFileSystem, IFileSystem, FILESYSTEM_INTERFACE_VERSION);
 
 	if (!g_pServerGameDLL)
 	{
@@ -470,6 +453,11 @@ bool SteamTools::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bo
 	if (!g_pLocalCVar)
 	{
 		snprintf(error, maxlen, "Could not find interface %s", CVAR_INTERFACE_VERSION);
+		return false;
+	}
+	if (!g_pFileSystem)
+	{
+		snprintf(error, maxlen, "Could not find interface %s", FILESYSTEM_INTERFACE_VERSION);
 		return false;
 	}
 
