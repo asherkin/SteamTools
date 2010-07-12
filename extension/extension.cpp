@@ -289,7 +289,30 @@ void Hook_GameFrame(bool simulating)
 	} else {
 
 #if defined _WIN32
+
+#ifdef USE_OLD_MODULE_LOAD
 		HMODULE steamclient_library = GetModuleHandle("steamclient.dll");
+#elif
+		//IFileSystem *pFileSystem = (IFileSystem *)GetFileSystemFactory(FILESYSTEM_INTERFACE_VERSION, NULL);
+		IFileSystem *pFileSystem = NULL;
+		GET_V_IFACE_CURRENT(GetFileSystemFactory, pFileSystem, IFileSystem, FILESYSTEM_INTERFACE_VERSION);
+
+		if ( !pFileSystem )
+		{
+			g_pSM->LogError(myself, "Unable to get filesystem interface.");
+			return;
+		}
+
+		CSysModule *pModSteamClient = pFileSystem->LoadModule("../bin/steamclient.dll", "MOD", false);
+
+		if ( !pModSteamClient )
+		{
+			g_pSM->LogError(myself, "Unable to get steamclient handle.");
+			return;
+		}
+
+		HMODULE steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
+#endif
 
 		CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
 
