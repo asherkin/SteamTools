@@ -337,10 +337,13 @@ void Hook_GameFrame(bool simulating)
 
 		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 
-		////////////////////////////////////////////////////////////////////
-		// Fallback loading code for windows only.                        //
-		////////////////////////////////////////////////////////////////////
 #ifdef _WIN32
+		/**
+		 * =============================================================================
+		 * Fallback loading code for windows.
+		 * =============================================================================
+		 */
+
 		if (!g_pSteamGameServer)
 		{
 			g_SMAPI->ConPrintf("[DEBUG] Failed to load %s, trying alternate method.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
@@ -363,10 +366,13 @@ void Hook_GameFrame(bool simulating)
 				g_SMAPI->ConPrintf("[DEBUG] Alternate method failed, %s not loaded.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
 			}
 		} else {
-			g_SMAPI->ConPrintf("[DEBUG] Loaded %s on the first atempt.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
+			g_SMAPI->ConPrintf("[DEBUG] Loaded %s on the first attempt.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
 		}
+
+		/**
+		 * =============================================================================
+		 */
 #endif
-		////////////////////////////////////////////////////////////////////
 
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
 		g_pSteamUtils = (ISteamUtils005 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMUTILS_INTERFACE_VERSION_005);
