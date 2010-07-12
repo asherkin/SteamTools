@@ -324,15 +324,15 @@ void Hook_GameFrame(bool simulating)
 
 		ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 
-		//g_pSM->LogMessage(myself, "Steam library loading complete.");
+		g_pSM->LogMessage(myself, "Steam library loading complete.");
 
 		// let's not get impatient
 		if(g_GameServerSteamPipe() == 0 || g_GameServerSteamUser() == 0)
 			return;
 
-		//g_pSM->LogMessage(myself, "Pipe = %d, User = %d.", g_GameServerSteamPipe(), g_GameServerSteamUser());
+		g_pSM->LogMessage(myself, "Pipe = %d, User = %d.", g_GameServerSteamPipe(), g_GameServerSteamUser());
 
-		//g_pSM->LogMessage(myself, "Acquiring interfaces and hooking functions...");
+		g_pSM->LogMessage(myself, "Acquiring interfaces and hooking functions...");
 
 		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
@@ -354,21 +354,45 @@ void Hook_GameFrame(bool simulating)
 
 bool CheckInterfaces() 
 {
-	if (!g_pSteamGameServer ||
-		!g_pSteamMasterServerUpdater ||
-		!g_pSteamUtils ||
-		!g_pSteamGameServerStats ||
-		!g_pSteamGameServer010)
+	g_SteamLoadFailed = false;
+	
+	if (!g_pSteamGameServer)
 	{
+		g_pSM->LogError(myself, "Could not find interface %s", STEAMGAMESERVER_INTERFACE_VERSION_008);
 		g_SteamLoadFailed = true;
+	}
+	
+	if (!g_pSteamMasterServerUpdater)
+	{
+		g_pSM->LogError(myself, "Could not find interface %s", STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
+		g_SteamLoadFailed = true;
+	}
+	
+	if (!g_pSteamUtils)
+	{
+		g_pSM->LogError(myself, "Could not find interface %s", STEAMUTILS_INTERFACE_VERSION_005);
+		g_SteamLoadFailed = true;
+	}
+	
+	if (!g_pSteamGameServerStats)
+	{
+		g_pSM->LogError(myself, "Could not find interface %s", STEAMGAMESERVERSTATS_INTERFACE_VERSION_001);
+		g_SteamLoadFailed = true;
+	}
+	
+	if (!g_pSteamGameServer010)
+	{
+		g_pSM->LogError(myself, "Could not find interface %s", STEAMGAMESERVER_INTERFACE_VERSION_010);
+		g_SteamLoadFailed = true;
+	}
 		
+	if (g_SteamLoadFailed)
+	{
 		if (g_GameFrameHookID != 0)
 		{
 			SH_REMOVE_HOOK_ID(g_GameFrameHookID);
 			g_GameFrameHookID = 0;
 		}
-
-		g_pSM->LogError(myself, "One or more SteamWorks interfaces failed to be acquired.");
 
 		return false;
 	} else {
