@@ -345,14 +345,14 @@ void Hook_GameFrame(bool simulating)
 		{
 			g_SMAPI->ConPrintf("[DEBUG] Failed to load %s, trying alternate method.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
 				
-			HMODULE steamclient_library = LoadLibrary("steamclient.dll");
+			/*HMODULE */steamclient_library = LoadLibrary("steamclient.dll");
 		
 			CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
 
 			GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
 			FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
 		
-			ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
+			/*ISteamClient008 * */client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 		
 			g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 			
