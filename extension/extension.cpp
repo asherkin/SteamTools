@@ -292,6 +292,7 @@ void Hook_GameFrame(bool simulating)
 
 #if defined _WIN32
 		CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../bin/steamclient.dll", "MOD", false);
+		//CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../../../../../../../Program Files/Steam/steamclient.dll", "MOD", false);
 		CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/steam_api.dll", "MOD", false);
 #elif defined _LINUX
 		CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../bin/steamclient.so", "MOD", false);
@@ -304,8 +305,11 @@ void Hook_GameFrame(bool simulating)
 			return;
 		}
 
-		HMODULE steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
-
+		//////////////////////////////////////////////////////////////////////////////////////////////////////
+		//HMODULE steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
+		HMODULE steamclient_library = LoadLibrary("steamclient.dll");
+		//////////////////////////////////////////////////////////////////////////////////////////////////////
+		
 		if ( !pModSteamApi )
 		{
 			g_pSM->LogError(myself, "Unable to get steam_api handle.");
