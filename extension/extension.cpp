@@ -305,10 +305,7 @@ void Hook_GameFrame(bool simulating)
 			return;
 		}
 
-		//////////////////////////////////////////////////////////////////////////////////////////////////////
-		//HMODULE steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
-		HMODULE steamclient_library = LoadLibrary("steamclient.dll");
-		//////////////////////////////////////////////////////////////////////////////////////////////////////
+		HMODULE steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
 		
 		if ( !pModSteamApi )
 		{
@@ -328,17 +325,49 @@ void Hook_GameFrame(bool simulating)
 
 		ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 
-		g_pSM->LogMessage(myself, "Steam library loading complete.");
+		//g_pSM->LogMessage(myself, "Steam library loading complete.");
 
 		// let's not get impatient
 		if(g_GameServerSteamPipe() == 0 || g_GameServerSteamUser() == 0)
 			return;
 
-		g_pSM->LogMessage(myself, "Pipe = %d, User = %d.", g_GameServerSteamPipe(), g_GameServerSteamUser());
+		//g_pSM->LogMessage(myself, "Pipe = %d, User = %d.", g_GameServerSteamPipe(), g_GameServerSteamUser());
 
-		g_pSM->LogMessage(myself, "Acquiring interfaces and hooking functions...");
+		//g_pSM->LogMessage(myself, "Acquiring interfaces and hooking functions...");
 
 		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
+
+		////////////////////////////////////////////////////////////////////
+		// Fallback loading code for windows only.                        //
+		////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
+		if (!g_pSteamGameServer)
+		{
+			g_SMAPI->ConPrintf("[DEBUG] Failed to load %s, trying alternate method.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
+				
+			HMODULE steamclient_library = LoadLibrary("steamclient.dll");
+		
+			CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
+
+			GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
+			FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
+		
+			ISteamClient008 *client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
+		
+			g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
+			
+			if (g_pSteamGameServer)
+			{
+				g_SMAPI->ConPrintf("[DEBUG] Alternate method worked, %s loaded.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
+			} else {
+				g_SMAPI->ConPrintf("[DEBUG] Alternate method failed, %s not loaded.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
+			}
+		} else {
+			g_SMAPI->ConPrintf("[DEBUG] Loaded %s on the first atempt.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
+		}
+#endif
+		////////////////////////////////////////////////////////////////////
+
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
 		g_pSteamUtils = (ISteamUtils005 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMUTILS_INTERFACE_VERSION_005);
 		g_pSteamGameServerStats = (ISteamGameServerStats001 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamUser(), STEAMGAMESERVERSTATS_INTERFACE_VERSION_001);
