@@ -57,7 +57,7 @@
     <ClCompile>
       <AdditionalOptions>/D SE_EPISODEONE=1 /D SE_DARKMESSIAH=2 /D SE_ORANGEBOX=3 /D SE_ORANGEBOXVALVE=4 /D SE_LEFT4DEAD=5 /D SE_LEFT4DEAD2=6 %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..;..\sdk;C:\Users\Allison\Desktop\Ashers_Stuff\sourcemod-1.3\public\;C:\Users\Allison\Desktop\Ashers_Stuff\sourcemod-1.3\public\sourcepawn;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\game\shared\;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\game\server\;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\public;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\public\engine;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\public\game\server;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\public\tier0;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\public\tier1;C:\Users\Allison\Desktop\Ashers_Stuff\mmsource-1.8\core;C:\Users\Allison\Desktop\Ashers_Stuff\mmsource-1.8\core\sourcehook;C:\Users\Allison\Desktop\Ashers_Stuff\opensteamworks\Open Steamworks;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..;..\sdk;$(SOURCEMOD13)\public\;$(SOURCEMOD13)\public\sourcepawn;$(HL2SDKOBVALVE)\game\shared\;$(HL2SDKOBVALVE)\game\server\;$(HL2SDKOBVALVE)\public;$(HL2SDKOBVALVE)\public\engine;$(HL2SDKOBVALVE)\public\game\server;$(HL2SDKOBVALVE)\public\tier0;$(HL2SDKOBVALVE)\public\tier1;$(MMSOURCE18)\core;$(MMSOURCE18)\core\sourcehook;D:\opensteamworks\Open Steamworks;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;SDK_EXPORTS;_CRT_SECURE_NO_DEPRECATE;SOURCEMOD_BUILD;SOURCE_ENGINE=4;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -70,7 +70,7 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\lib\public\tier0.lib;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\lib\public\tier1.lib;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\lib\public\vstdlib.lib;C:\Users\Allison\Desktop\Ashers_Stuff\opensteamworks\steamclient.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(HL2SDKOBVALVE)\lib\public\tier0.lib;$(HL2SDKOBVALVE)\lib\public\tier1.lib;$(HL2SDKOBVALVE)\lib\public\vstdlib.lib;D:\opensteamworks\steamclient.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).ext.dll</OutputFile>
       <IgnoreSpecificDefaultLibraries>LIBC;LIBCD;LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -86,7 +86,7 @@
     <ClCompile>
       <AdditionalOptions>/MP /D SE_EPISODEONE=1 /D SE_DARKMESSIAH=2 /D SE_ORANGEBOX=3 /D SE_ORANGEBOXVALVE=4 /D SE_LEFT4DEAD=5 /D SE_LEFT4DEAD2=6 %(AdditionalOptions)</AdditionalOptions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..;..\sdk;C:\Users\Allison\Desktop\Ashers_Stuff\sourcemod-1.3\public\;C:\Users\Allison\Desktop\Ashers_Stuff\sourcemod-1.3\public\sourcepawn;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\game\shared\;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\game\server\;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\public;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\public\engine;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\public\game\server;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\public\tier0;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\public\tier1;C:\Users\Allison\Desktop\Ashers_Stuff\mmsource-1.8\core;C:\Users\Allison\Desktop\Ashers_Stuff\mmsource-1.8\core\sourcehook;C:\Users\Allison\Desktop\Ashers_Stuff\opensteamworks\Open Steamworks;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..;..\sdk;$(SOURCEMOD13)\public\;$(SOURCEMOD13)\public\sourcepawn;$(HL2SDKOBVALVE)\game\shared\;$(HL2SDKOBVALVE)\game\server\;$(HL2SDKOBVALVE)\public;$(HL2SDKOBVALVE)\public\engine;$(HL2SDKOBVALVE)\public\game\server;$(HL2SDKOBVALVE)\public\tier0;$(HL2SDKOBVALVE)\public\tier1;$(MMSOURCE18)\core;$(MMSOURCE18)\core\sourcehook;D:\opensteamworks\Open Steamworks;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;SDK_EXPORTS;_CRT_SECURE_NO_DEPRECATE;SOURCEMOD_BUILD;SOURCE_ENGINE=4;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
@@ -98,7 +98,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\lib\public\tier0.lib;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\lib\public\tier1.lib;C:\Users\Allison\Desktop\Ashers_Stuff\hl2sdk-ob-valve\lib\public\vstdlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(HL2SDKOBVALVE)\lib\public\tier0.lib;$(HL2SDKOBVALVE)\lib\public\tier1.lib;$(HL2SDKOBVALVE)\lib\public\vstdlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ShowProgress>LinkVerbose</ShowProgress>
       <OutputFile>$(OutDir)$(ProjectName).ext.dll</OutputFile>
       <IgnoreSpecificDefaultLibraries>LIBC;LIBCD;LIBCMTD;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
