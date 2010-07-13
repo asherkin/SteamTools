@@ -348,7 +348,7 @@ void Hook_GameFrame(bool simulating)
 		{
 			g_SMAPI->ConPrintf("[DEBUG] Failed to load %s, trying alternate method.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
 				
-			/*HMODULE */steamclient_library = LoadLibrary("steamclient.dll");
+			/*HMODULE */steamclient_library = GetModuleHandle("steamclient.dll");
 		
 			CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
 
@@ -364,6 +364,20 @@ void Hook_GameFrame(bool simulating)
 				g_SMAPI->ConPrintf("[DEBUG] Alternate method worked, %s loaded.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
 			} else {
 				g_SMAPI->ConPrintf("[DEBUG] Alternate method failed, %s not loaded.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
+				g_SMAPI->ConPrintf("[DEBUG] [WAZZ] Trying Wazz mode.\n");
+				CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../../../../Program Files (x86)/Steam/steamclient.dll", "MOD", false);
+				steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
+				CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
+				GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
+				FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
+				/*ISteamClient008 * */client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
+				g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
+				if (g_pSteamGameServer)
+				{
+					g_SMAPI->ConPrintf("[DEBUG] [WAZZ] Wazz method worked, %s loaded.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
+				} else {
+					g_SMAPI->ConPrintf("[DEBUG] [WAZZ] Wazz method failed, %s not loaded.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
+				}
 			}
 		} else {
 			g_SMAPI->ConPrintf("[DEBUG] Loaded %s on the first attempt.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
