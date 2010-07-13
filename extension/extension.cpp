@@ -348,14 +348,14 @@ void Hook_GameFrame(bool simulating)
 		{
 			g_SMAPI->ConPrintf("[DEBUG] Failed to load %s, trying alternate method.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
 				
-			/*HMODULE */steamclient_library = GetModuleHandle("steamclient.dll");
+			steamclient_library = GetModuleHandle("steamclient.dll");
 		
 			CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
 
 			GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
 			FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
 		
-			/*ISteamClient008 * */client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
+			client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 		
 			g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 			
@@ -372,14 +372,15 @@ void Hook_GameFrame(bool simulating)
 					DWORD dwLength = sizeof(pchSteamDir);
 					RegQueryValueExA(hRegKey, "InstallPath", NULL, NULL, (BYTE*)pchSteamDir, &dwLength);
 					RegCloseKey(hRegKey);
+
+					pModSteamClient = g_pFileSystem->LoadModule(pchSteamDir + "/steamclient.dll", "MOD", false);
+					steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
+					CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
+					GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
+					FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
+					client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
+					g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 				}
-				pModSteamClient = g_pFileSystem->LoadModule(pchSteamDir + "/steamclient.dll", "MOD", false);
-				steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
-				CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
-				GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
-				FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
-				client = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
-				g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 				if (g_pSteamGameServer)
 				{
 					g_SMAPI->ConPrintf("[DEBUG] Wazz method worked, %s loaded.\n", STEAMGAMESERVER_INTERFACE_VERSION_008);
