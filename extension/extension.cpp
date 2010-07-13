@@ -292,11 +292,8 @@ void Hook_GameFrame(bool simulating)
 
 #if defined _WIN32
 		CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../bin/steamclient.dll", "MOD", false);
-		//CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../../../../../../../Program Files/Steam/steamclient.dll", "MOD", false);
-		CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/steam_api.dll", "MOD", false);
 #elif defined _LINUX
 		CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../bin/steamclient.so", "MOD", false);
-		CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/libsteam_api.so", "MOD", false);
 #endif
 
 		if ( !pModSteamClient )
@@ -306,6 +303,12 @@ void Hook_GameFrame(bool simulating)
 		}
 
 		HMODULE steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
+		
+#if defined _WIN32	
+		CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/steam_api.dll", "MOD", false);
+#elif defined _LINUX
+		CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/libsteam_api.so", "MOD", false);
+#endif
 		
 		if ( !pModSteamApi )
 		{
@@ -340,7 +343,7 @@ void Hook_GameFrame(bool simulating)
 #ifdef _WIN32
 		/**
 		 * =============================================================================
-		 * Fallback loading code for windows.
+		 * Fallback loading code for windows. - Note that this is a mess and shouldn't be taken as an example.
 		 * =============================================================================
 		 */
 
@@ -372,8 +375,9 @@ void Hook_GameFrame(bool simulating)
 					DWORD dwLength = sizeof(pchSteamDir);
 					RegQueryValueExA(hRegKey, "InstallPath", NULL, NULL, (BYTE*)pchSteamDir, &dwLength);
 					RegCloseKey(hRegKey);
-
-					pModSteamClient = g_pFileSystem->LoadModule(pchSteamDir + "/steamclient.dll", "MOD", false);
+					
+					strcat(pchSteamDir, "/steamclient.dll");
+					pModSteamClient = g_pFileSystem->LoadModule(pchSteamDir, "MOD", false);
 					steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
 					CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
 					GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
