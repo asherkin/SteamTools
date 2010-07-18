@@ -284,12 +284,12 @@ public Action:Steam_RestartRequested()
 
 public Action:Steam_SteamServersConnected()
 {
-	PrintToChatAll("[SM] Lost connection to Steam servers.");
+	PrintToChatAll("[SM] Connection to Steam servers established.");
 	return Plugin_Continue;
 }
 
 public Action:Steam_SteamServersDisconnected()
 {
-	PrintToChatAll("[SM] Connection to Steam servers reestablished.");
+	PrintToChatAll("[SM] Lost connection to Steam servers.");
 	return Plugin_Continue;
 }
