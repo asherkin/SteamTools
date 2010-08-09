@@ -3,6 +3,11 @@
 ////////////////////////////////////////////////////////////
 // native Steam_SetRule(String:key[], String:value[]);
 // native Steam_ClearRules();
+//
+// native bool:Steam_AddMasterServer(String:serverAddress[]);
+// native bool:Steam_RemoveMasterServer(String:serverAddress[]);
+// native Steam_GetNumMasterServers();
+// native Steam_GetMasterServerAddress(server, &String:serverAddress[], bufferSize);
 ////////////////////////////////////////////////////////////
 
 #pragma semicolon 1

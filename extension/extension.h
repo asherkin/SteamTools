@@ -174,6 +174,11 @@ static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params);
 static cell_t SetKeyValue(IPluginContext *pContext, const cell_t *params);
 static cell_t ClearAllKeyValues(IPluginContext *pContext, const cell_t *params);
 
+static cell_t AddMasterServer(IPluginContext *pContext, const cell_t *params);
+static cell_t RemoveMasterServer(IPluginContext *pContext, const cell_t *params);
+static cell_t GetNumMasterServers(IPluginContext *pContext, const cell_t *params);
+//static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *params);
+
 static cell_t RequestStats(IPluginContext *pContext, const cell_t *params);
 static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params);
 static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params);

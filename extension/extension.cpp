@@ -108,7 +108,11 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_IsConnected",				IsConnected },
 	{ "Steam_GetPublicIP",				GetPublicIP },
 	{ "Steam_SetRule",					SetKeyValue },
-	{ "Steam_ClearRules",				ClearAllKeyValues },			
+	{ "Steam_ClearRules",				ClearAllKeyValues },
+	{ "Steam_AddMasterServer",			AddMasterServer },
+	{ "Steam_RemoveMasterServer",		RemoveMasterServer },
+	{ "Steam_GetNumMasterServers",		GetNumMasterServers },
+//	{ "Steam_GetMasterServerAddress",	GetMasterServerAddress },
 	{ "Steam_RequestStats",				RequestStats },
 	{ "Steam_GetStat",					GetStatInt },
 	{ "Steam_GetStatFloat",				GetStatFloat },
@@ -671,7 +675,7 @@ static cell_t SetKeyValue(IPluginContext *pContext, const cell_t *params)
 	pContext->LocalToString(params[1], &pKey);
 	char *pValue;
 	pContext->LocalToString(params[2], &pValue);
-	g_pSteamMasterServerUpdater->(pKey, pValue);
+	g_pSteamMasterServerUpdater->SetKeyValue(pKey, pValue);
 	return 0;
 }
 
@@ -680,6 +684,30 @@ static cell_t ClearAllKeyValues(IPluginContext *pContext, const cell_t *params)
 	g_pSteamMasterServerUpdater->ClearAllKeyValues();
 	return 0;
 }
+
+static cell_t AddMasterServer(IPluginContext *pContext, const cell_t *params)
+{
+	char *pServerAddress;
+	pContext->LocalToString(params[1], &pServerAddress);
+	return g_pSteamMasterServerUpdater->AddMasterServer(pServerAddress);
+}
+
+static cell_t RemoveMasterServer(IPluginContext *pContext, const cell_t *params)
+{
+	char *pServerAddress;
+	pContext->LocalToString(params[1], &pServerAddress);
+	return g_pSteamMasterServerUpdater->RemoveMasterServer(pServerAddress);
+}
+
+static cell_t GetNumMasterServers(IPluginContext *pContext, const cell_t *params)
+{
+	return g_pSteamMasterServerUpdater->GetNumMasterServers();
+}
+
+//static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *params)
+//{
+//	return 0;
+//}
 
 static cell_t RequestStats(IPluginContext *pContext, const cell_t *params)
 {
