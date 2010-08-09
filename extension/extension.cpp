@@ -526,10 +526,10 @@ void SteamTools::OnClientDisconnecting(int client)
 
 bool Hook_WasRestartRequested()
 {
-	bool bWasRestartRequested;
+	cell_t cellResults = 0;
+	bool bWasRestartRequested = false;
 	if ((bWasRestartRequested = SH_CALL(g_pSteamMasterServerUpdater, &ISteamMasterServerUpdater001::WasRestartRequested)()))
 	{
-		cell_t cellResults = 0;
 		g_pForwardRestartRequested->Execute(&cellResults);
 	}
 	RETURN_META_VALUE(MRES_SUPERCEDE, (cellResults < Pl_Handled)?bWasRestartRequested:false);
