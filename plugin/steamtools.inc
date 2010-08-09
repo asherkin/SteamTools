@@ -24,7 +24,7 @@ native Steam_ClearRules();
 native bool:Steam_AddMasterServer(String:serverAddress[]);
 native bool:Steam_RemoveMasterServer(String:serverAddress[]);
 native Steam_GetNumMasterServers();
-//native Steam_GetMasterServerAddress(server, &String:serverAddress[], bufferSize);
+native Steam_GetMasterServerAddress(server, String:serverAddress[], maxlength);
 
 native Steam_RequestStats(client);
 native Steam_GetStat(client, String:statName[]);

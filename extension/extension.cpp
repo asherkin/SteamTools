@@ -112,7 +112,7 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_AddMasterServer",			AddMasterServer },
 	{ "Steam_RemoveMasterServer",		RemoveMasterServer },
 	{ "Steam_GetNumMasterServers",		GetNumMasterServers },
-//	{ "Steam_GetMasterServerAddress",	GetMasterServerAddress },
+	{ "Steam_GetMasterServerAddress",	GetMasterServerAddress },
 	{ "Steam_RequestStats",				RequestStats },
 	{ "Steam_GetStat",					GetStatInt },
 	{ "Steam_GetStatFloat",				GetStatFloat },
@@ -704,10 +704,13 @@ static cell_t GetNumMasterServers(IPluginContext *pContext, const cell_t *params
 	return g_pSteamMasterServerUpdater->GetNumMasterServers();
 }
 
-//static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *params)
-//{
-//	return 0;
-//}
+static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *params)
+{
+	char *serverAddress;
+	int numbytes = g_pSteamMasterServerUpdater->GetMasterServerAddress(params[1], serverAddress, params[3]);
+	pContext->StringToLocal(params[2], numbytes, serverAddress);
+	return numbytes;
+}
 
 static cell_t RequestStats(IPluginContext *pContext, const cell_t *params)
 {

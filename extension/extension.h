@@ -177,7 +177,7 @@ static cell_t ClearAllKeyValues(IPluginContext *pContext, const cell_t *params);
 static cell_t AddMasterServer(IPluginContext *pContext, const cell_t *params);
 static cell_t RemoveMasterServer(IPluginContext *pContext, const cell_t *params);
 static cell_t GetNumMasterServers(IPluginContext *pContext, const cell_t *params);
-//static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *params);
+static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *params);
 
 static cell_t RequestStats(IPluginContext *pContext, const cell_t *params);
 static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params);
@@ -186,4 +186,5 @@ static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params);
 
 CSteamID SteamIDToCSteamID(const char *steamID);
 bool CheckInterfaces();
+
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
