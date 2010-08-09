@@ -162,6 +162,7 @@ public: //IClientListener
 
 void Hook_GameFrame(bool simulating);
 bool Hook_WasRestartRequested();
+
 static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params);
 static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params);
 static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *params);
@@ -169,10 +170,15 @@ static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params);
 static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params);
 static cell_t IsConnected(IPluginContext *pContext, const cell_t *params);
 static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params);
+
+static cell_t SetKeyValue(IPluginContext *pContext, const cell_t *params);
+static cell_t ClearAllKeyValues(IPluginContext *pContext, const cell_t *params);
+
 static cell_t RequestStats(IPluginContext *pContext, const cell_t *params);
 static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params);
 static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params);
 static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params);
+
 CSteamID SteamIDToCSteamID(const char *steamID);
 bool CheckInterfaces();
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

@@ -107,6 +107,8 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_IsVACEnabled",				IsVACEnabled },
 	{ "Steam_IsConnected",				IsConnected },
 	{ "Steam_GetPublicIP",				GetPublicIP },
+	{ "Steam_SetRule",					SetKeyValue },
+	{ "Steam_ClearRules",				ClearAllKeyValues },			
 	{ "Steam_RequestStats",				RequestStats },
 	{ "Steam_GetStat",					GetStatInt },
 	{ "Steam_GetStatFloat",				GetStatFloat },
@@ -526,7 +528,7 @@ bool Hook_WasRestartRequested()
 		cell_t cellResults = 0;
 		g_pForwardRestartRequested->Execute(&cellResults);
 	}
-	RETURN_META_VALUE(MRES_SUPERCEDE, bWasRestartRequested);
+	RETURN_META_VALUE(MRES_SUPERCEDE, (cellResults < Pl_Handled)?bWasRestartRequested:false);
 }
 
 bool SteamTools::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late)
@@ -660,6 +662,22 @@ static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params)
 	addr[2] = octet[1];
 	addr[3] = octet[0];
 
+	return 0;
+}
+
+static cell_t SetKeyValue(IPluginContext *pContext, const cell_t *params)
+{
+	char *pKey;
+	pContext->LocalToString(params[1], &pKey);
+	char *pValue;
+	pContext->LocalToString(params[2], &pValue);
+	g_pSteamMasterServerUpdater->(pKey, pValue);
+	return 0;
+}
+
+static cell_t ClearAllKeyValues(IPluginContext *pContext, const cell_t *params)
+{
+	g_pSteamMasterServerUpdater->ClearAllKeyValues();
 	return 0;
 }
 

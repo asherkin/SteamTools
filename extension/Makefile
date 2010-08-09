@@ -94,7 +94,7 @@ ifeq "$(ENGINE)" "left4dead2"
 	override ENGSET = true
 endif
 
-	INCLUDE += -I../../osw/Open\ Steamworks
+	INCLUDE += -I../../sdks/opensteamworks/Open\ Steamworks
 
 ifeq "$(USEMETA)" "true"
 	LINK_HL2 = $(HL2LIB)/tier1_i486.a $(LIB_PREFIX)vstdlib$(LIB_SUFFIX) $(LIB_PREFIX)tier0$(LIB_SUFFIX)

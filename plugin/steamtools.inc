@@ -10,19 +10,24 @@ native Steam_ForceHeartbeat();
 native bool:Steam_IsVACEnabled();
 native bool:Steam_IsConnected();
 native Steam_GetPublicIP(octets[4]);
-forward Action:Steam_GroupStatusResult(client, groupAccountID, bool:groupMember, bool:groupOfficer);
-forward Action:Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed);
-forward Action:Steam_Reputation(reputationScore, bool:banned, bannedIP, bannedPort, bannedGameID, banExpires);
+
+forward Steam_GroupStatusResult(client, groupAccountID, bool:groupMember, bool:groupOfficer);
+forward Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed);
+forward Steam_Reputation(reputationScore, bool:banned, bannedIP, bannedPort, bannedGameID, banExpires);
 forward Action:Steam_RestartRequested();
-forward Action:Steam_SteamServersConnected();
-forward Action:Steam_SteamServersDisconnected();
+forward Steam_SteamServersConnected();
+forward Steam_SteamServersDisconnected();
+
+native Steam_SetRule(String:key[], String:value[]);
+native Steam_ClearRules();
 
 native Steam_RequestStats(client);
 native Steam_GetStat(client, String:statName[]);
 native Float:Steam_GetStatFloat(client, String:statName[]);
 native bool:Steam_IsAchieved(client, String:achievementName[]);
-forward Action:Steam_StatsReceived(client);
-forward Action:Steam_StatsUnloaded(client);
+
+forward Steam_StatsReceived(client);
+forward Steam_StatsUnloaded(client);
 
 public Extension:__ext_SteamTools = 
 {

@@ -1,3 +1,10 @@
+////////////////////////////////////////////////////////////
+// Test cases missing:
+////////////////////////////////////////////////////////////
+// native Steam_SetRule(String:key[], String:value[]);
+// native Steam_ClearRules();
+////////////////////////////////////////////////////////////
+
 #pragma semicolon 1
 
 #include <sourcemod>
@@ -55,16 +62,16 @@ public OnClientDisconnect(client)
 	HaveStats[client] = false;
 }
 
-public Action:Steam_StatsReceived(client)
+public Steam_StatsReceived(client)
 {
 	HaveStats[client] = true;
-	return Plugin_Continue;
+	return;
 }
 
-public Action:Steam_StatsUnloaded(client)
+public Steam_StatsUnloaded(client)
 {
 	HaveStats[client] = false;
-	return Plugin_Continue;
+	return;
 }
 
 public Action:Command_GroupStatus(client, args)
@@ -249,31 +256,31 @@ public Action:Command_PrintAchievement(client, args)
 	return Plugin_Handled;
 }
 
-public Action:Steam_GroupStatusResult(client, groupAccountID, bool:groupMember, bool:groupOfficer)
+public Steam_GroupStatusResult(client, groupAccountID, bool:groupMember, bool:groupOfficer)
 {
 	SetCmdReplySource(Async_GroupStatus_Reply);
 	ReplyToCommand(Async_GroupStatus_Client, "[SM] %N is %s in group %d.", client, groupMember?(groupOfficer?"an officer":"a member"):"not a member", groupAccountID);
 	Async_GroupStatus_Reply = SM_REPLY_TO_CONSOLE;
 	Async_GroupStatus_Client = 0;
-	return Plugin_Continue;
+	return;
 }
 
-public Action:Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed)
+public Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed)
 {
 	SetCmdReplySource(Async_GameplayStats_Reply);
 	ReplyToCommand(Async_GameplayStats_Client, "[SM] Rank: %d. Total Connects: %d. Total Minutes Played: %d.", rank, totalConnects, totalMinutesPlayed);
 	Async_GameplayStats_Reply = SM_REPLY_TO_CONSOLE;
 	Async_GameplayStats_Client = 0;
-	return Plugin_Continue;
+	return;
 }
 
-public Action:Steam_Reputation(reputationScore, bool:banned, bannedIP, bannedPort, bannedGameID, banExpires)
+public Steam_Reputation(reputationScore, bool:banned, bannedIP, bannedPort, bannedGameID, banExpires)
 {
 	SetCmdReplySource(Async_ServerReputation_Reply);
 	ReplyToCommand(Async_ServerReputation_Client, "[SM] Reputation Score: %d. Banned: %s.", reputationScore, banned?"true":"false");
 	Async_ServerReputation_Reply = SM_REPLY_TO_CONSOLE;
 	Async_ServerReputation_Client = 0;
-	return Plugin_Continue;
+	return;
 }
 
 public Action:Steam_RestartRequested()
@@ -282,14 +289,14 @@ public Action:Steam_RestartRequested()
 	return Plugin_Continue;
 }
 
-public Action:Steam_SteamServersConnected()
+public Steam_SteamServersConnected()
 {
 	PrintToChatAll("[SM] Connection to Steam servers established.");
-	return Plugin_Continue;
+	return;
 }
 
-public Action:Steam_SteamServersDisconnected()
+public Steam_SteamServersDisconnected()
 {
 	PrintToChatAll("[SM] Lost connection to Steam servers.");
-	return Plugin_Continue;
+	return;
 }
