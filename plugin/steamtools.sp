@@ -236,7 +236,7 @@ public Action:Command_ListMasterServers(client, args)
 	for (new i = 0; i < iCount; i++)
 	{
 		Steam_GetMasterServerAddress(i, serverAddress, 64);
-		ReplyToCommand(client, "[SM] %d: %s.", i, serverAddress);
+		ReplyToCommand(client, "[SM] %d: %s", (i + 1), serverAddress);
 	}
 	
 	return Plugin_Handled;
