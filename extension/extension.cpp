@@ -706,7 +706,7 @@ static cell_t GetNumMasterServers(IPluginContext *pContext, const cell_t *params
 
 static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *params)
 {
-	char *serverAddress;
+	char *serverAddress = new char[params[3]];
 	int numbytes = g_pSteamMasterServerUpdater->GetMasterServerAddress(params[1], serverAddress, params[3]);
 	pContext->StringToLocal(params[2], numbytes, serverAddress);
 	return numbytes;
