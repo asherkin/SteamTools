@@ -1,9 +1,6 @@
 ////////////////////////////////////////////////////////////
 // Test cases missing:
 ////////////////////////////////////////////////////////////
-// native Steam_SetRule(String:key[], String:value[]);
-// native Steam_ClearRules();
-//
 // native bool:Steam_AddMasterServer(String:serverAddress[]);
 // native bool:Steam_RemoveMasterServer(String:serverAddress[]);
 // native Steam_GetNumMasterServers();
@@ -52,6 +49,9 @@ public OnPluginStart()
 
 	RegAdminCmd("sm_printstat", Command_PrintStat, ADMFLAG_ROOT, "Prints the value of a stat for a client.");
 	RegAdminCmd("sm_printachievement", Command_PrintAchievement, ADMFLAG_ROOT, "Prints whether or not a client has earned an achievement.");
+
+	RegAdminCmd("sm_setrule", Command_SetRule, ADMFLAG_ROOT, "Sets (and adds if missing) the value of an entry in the Master Server Rules response.");
+	RegAdminCmd("sm_clearrules", Command_ClearRules, ADMFLAG_ROOT, "Removes all the entries in the Master Server Rules response.");
 }
 
 public OnClientAuthorized(client, const String:auth[])
@@ -172,6 +172,34 @@ public Action:Command_PrintIP(client, args)
 	new octets[4];
 	Steam_GetPublicIP(octets);
 	ReplyToCommand(client, "[SM] Server IP Address: %d.%d.%d.%d", octets[0], octets[1], octets[2], octets[3]);
+	return Plugin_Handled;
+}
+
+public Action:Command_SetRule(client, args)
+{
+	if (args != 2)
+	{
+		ReplyToCommand(client, "[SM] Usage: sm_setrule <key> <value>");
+		return Plugin_Handled;
+	}
+
+	new String:arg1[32];
+	new String:arg2[32];
+
+	GetCmdArg(1, arg1, sizeof(arg1));
+	GetCmdArg(2, arg2, sizeof(arg2));
+ 
+	Steam_SetRule(arg1, arg2);
+	ReplyToCommand(client, "[SM] Rule Set.");
+
+	return Plugin_Handled;
+}
+
+public Action:Command_ClearRules(client, args)
+{
+	Steam_ClearRules();
+	ReplyToCommand(client, "[SM] Rules Cleared.");
+
 	return Plugin_Handled;
 }
 
