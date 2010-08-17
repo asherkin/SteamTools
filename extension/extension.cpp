@@ -508,7 +508,8 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 void SteamTools::OnClientAuthorized(int client, const char *authstring)
 {
 	CSteamID steamID = SteamIDToCSteamID(authstring);
-	g_SteamClients.AddToTail(CSteamClient(client, steamID));
+	if (steamID.GetAccountID())
+		g_SteamClients.AddToTail(CSteamClient(client, steamID));
 }
 
 void SteamTools::OnClientDisconnecting(int client)
@@ -604,6 +605,9 @@ bool SteamTools::QueryRunning( char *error, size_t maxlen )
 
 static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamGameServer)
+		return 0;
+
 	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
 		if (g_SteamClients.Element(i) == params[1])
@@ -611,17 +615,23 @@ static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
 			return g_pSteamGameServer->RequestUserGroupStatus(g_SteamClients.Element(i).GetSteamID(), CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));
 		}
 	}
-	return 0;
+	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
 }
 
 static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamGameServer)
+		return 0;
+
 	g_pSteamGameServer->GetGameplayStats();
 	return 0;
 }
 
 static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamGameServer010)
+		return 0;
+
 	if (g_SteamAPICall == k_uAPICallInvalid)
 	{
 		g_SteamAPICall = g_pSteamGameServer010->GetServerReputation();
@@ -633,22 +643,34 @@ static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *pa
 
 static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamMasterServerUpdater)
+		return 0;
+
 	g_pSteamMasterServerUpdater->ForceHeartbeat();
 	return 0;
 }
 
 static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamGameServer)
+		return 0;
+
 	return g_pSteamGameServer->Secure();
 }
 
 static cell_t IsConnected(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamGameServer)
+		return 0;
+
 	return g_pSteamGameServer->LoggedOn();
 }
 
 static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamGameServer)
+		return 0;
+
 	uint32 ipAddress = g_pSteamGameServer->GetPublicIP();
 	unsigned char octet[4]  = {0,0,0,0};
 
@@ -670,6 +692,9 @@ static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params)
 
 static cell_t SetKeyValue(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamMasterServerUpdater)
+		return 0;
+
 	char *pKey;
 	pContext->LocalToString(params[1], &pKey);
 	char *pValue;
@@ -680,12 +705,18 @@ static cell_t SetKeyValue(IPluginContext *pContext, const cell_t *params)
 
 static cell_t ClearAllKeyValues(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamMasterServerUpdater)
+		return 0;
+
 	g_pSteamMasterServerUpdater->ClearAllKeyValues();
 	return 0;
 }
 
 static cell_t AddMasterServer(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamMasterServerUpdater)
+		return 0;
+
 	char *pServerAddress;
 	pContext->LocalToString(params[1], &pServerAddress);
 	return g_pSteamMasterServerUpdater->AddMasterServer(pServerAddress);
@@ -693,6 +724,9 @@ static cell_t AddMasterServer(IPluginContext *pContext, const cell_t *params)
 
 static cell_t RemoveMasterServer(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamMasterServerUpdater)
+		return 0;
+
 	char *pServerAddress;
 	pContext->LocalToString(params[1], &pServerAddress);
 	return g_pSteamMasterServerUpdater->RemoveMasterServer(pServerAddress);
@@ -700,11 +734,17 @@ static cell_t RemoveMasterServer(IPluginContext *pContext, const cell_t *params)
 
 static cell_t GetNumMasterServers(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamMasterServerUpdater)
+		return 0;
+
 	return g_pSteamMasterServerUpdater->GetNumMasterServers();
 }
 
 static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamMasterServerUpdater)
+		return 0;
+
 	char *serverAddress = new char[params[3]];
 	int numbytes = g_pSteamMasterServerUpdater->GetMasterServerAddress(params[1], serverAddress, params[3]);
 	pContext->StringToLocal(params[2], numbytes, serverAddress);
@@ -713,19 +753,25 @@ static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *par
 
 static cell_t RequestStats(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamGameServerStats)
+		return 0;
+
 	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
 		if (g_SteamClients.Element(i) == params[1])
 		{
 			g_RequestUserStatsSteamAPICalls.AddToTail(g_pSteamGameServerStats->RequestUserStats(g_SteamClients.Element(i).GetSteamID()));
-			break;
+			return 0;
 		}
 	}
-	return 0;
+	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
 }
 
 static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamGameServerStats)
+		return 0;
+
 	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
 		if (g_SteamClients.Element(i) == params[1])
@@ -747,6 +793,9 @@ static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params)
 
 static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamGameServerStats)
+		return 0;
+
 	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
 		if (g_SteamClients.Element(i) == params[1])
@@ -768,6 +817,9 @@ static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params)
 
 static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params)
 {
+	if (!g_pSteamGameServerStats)
+		return 0;
+
 	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
 		if (g_SteamClients.Element(i) == params[1])
