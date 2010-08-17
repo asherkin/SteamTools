@@ -186,5 +186,5 @@ static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params);
 
 CSteamID SteamIDToCSteamID(const char *steamID);
 bool CheckInterfaces();
-
+bool LoadSteamclient(ISteamClient008 *pSteamClient, int method = 0);
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
