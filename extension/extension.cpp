@@ -315,7 +315,7 @@ void Hook_GameFrame(bool simulating)
 
 		ISteamClient008 *client = NULL;
 
-		if (!LoadSteamclient(client))
+		if (!LoadSteamclient(&client))
 			return;
 
 		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
@@ -384,12 +384,13 @@ bool CheckInterfaces()
 	}
 }
 
-bool LoadSteamclient(ISteamClient008 *pSteamClient, int method)
+bool LoadSteamclient(ISteamClient008 **pSteamClient, int method)
 {
 	if(!g_GameServerSteamPipe || !g_GameServerSteamUser || !g_GameServerSteamPipe() || !g_GameServerSteamUser())
 		return false;
 
 	HMODULE steamclient_library = NULL;
+	ISteamClient008 *pLocalSteamClient = NULL;
 
 	g_pSM->LogMessage(myself, "Trying method %d ...", (method + 1));
 
@@ -456,9 +457,9 @@ bool LoadSteamclient(ISteamClient008 *pSteamClient, int method)
 	GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
 	FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
 
-	pSteamClient = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
+	pLocalSteamClient = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 
-	ISteamGameServer008 *gameserver = (ISteamGameServer008 *)pSteamClient->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
+	ISteamGameServer008 *gameserver = (ISteamGameServer008 *)pLocalSteamClient->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
 
 	if (!gameserver)
 	{
@@ -466,6 +467,7 @@ bool LoadSteamclient(ISteamClient008 *pSteamClient, int method)
 	}
 
 	g_pSM->LogMessage(myself, "Method %d worked!", (method + 1));
+	*pSteamClient = pLocalSteamClient;
 	return true;
 }
 
