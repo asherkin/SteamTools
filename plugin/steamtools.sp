@@ -1,12 +1,3 @@
-////////////////////////////////////////////////////////////
-// Test cases missing:
-////////////////////////////////////////////////////////////
-// native bool:Steam_AddMasterServer(String:serverAddress[]);
-// native bool:Steam_RemoveMasterServer(String:serverAddress[]);
-// native Steam_GetNumMasterServers();
-// native Steam_GetMasterServerAddress(server, String:serverAddress[], bufferSize);
-////////////////////////////////////////////////////////////
-
 #pragma semicolon 1
 
 #include <sourcemod>
