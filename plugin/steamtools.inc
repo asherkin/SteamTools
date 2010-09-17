@@ -2,7 +2,7 @@
 #endinput
 #endif
 #define _steamtools_included
-c
+
 native bool:Steam_RequestGroupStatus(client, groupAccountID);
 native Steam_RequestGameplayStats();
 native Steam_RequestServerReputation();
