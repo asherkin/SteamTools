@@ -2,7 +2,7 @@
 #endinput
 #endif
 #define _steamtools_included
-
+c
 native bool:Steam_RequestGroupStatus(client, groupAccountID);
 native Steam_RequestGameplayStats();
 native Steam_RequestServerReputation();
@@ -33,6 +33,8 @@ native bool:Steam_IsAchieved(client, String:achievementName[]);
 
 forward Steam_StatsReceived(client);
 forward Steam_StatsUnloaded(client);
+
+forward Steam_FullyLoaded();
 
 public Extension:__ext_SteamTools = 
 {

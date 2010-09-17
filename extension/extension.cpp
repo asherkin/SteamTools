@@ -98,6 +98,8 @@ IForward *g_pForwardSteamServersDisconnected = NULL;
 IForward *g_pForwardClientReceivedStats = NULL;
 IForward *g_pForwardClientUnloadedStats = NULL;
 
+IForward *g_pForwardLoaded = NULL;
+
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
 	{ "Steam_RequestGroupStatus",		RequestGroupStatus },
@@ -119,6 +121,11 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_IsAchieved",				IsAchieved },
 	{ NULL,								NULL }
 };
+
+#define STEAMGAMESERVER_INTERFACE_VERSION 008
+#define STEAMMASTERSERVERUPDATER_INTERFACE_VERSION 001
+#define STEAMUTILS_INTERFACE_VERSION 005
+#define STEAMGAMESERVERSTATS_INTERFACE_VERSION 001
 
 /**
  * =============================================================================
@@ -332,6 +339,9 @@ void Hook_GameFrame(bool simulating)
 
 		g_pSM->LogMessage(myself, "Loading complete.");
 
+		cell_t dummy;
+		g_pForwardLoaded->Execute(&dummy);
+
 		g_SteamServersConnected = g_pSteamGameServer->LoggedOn();
 	}
 }
@@ -499,6 +509,8 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 	g_pForwardClientReceivedStats = g_pForwards->CreateForward("Steam_StatsReceived", ET_Ignore, 1, NULL, Param_Cell);
 	g_pForwardClientUnloadedStats = g_pForwards->CreateForward("Steam_StatsUnloaded", ET_Ignore, 1, NULL, Param_Cell);
+
+	g_pForwardLoaded = g_pForwards->CreateForward("Steam_FullyLoaded", ET_Ignore, 0, NULL);
 
 	g_pSM->LogMessage(myself, "Initial loading stage complete...");
 
