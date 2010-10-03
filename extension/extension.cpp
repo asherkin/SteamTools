@@ -58,12 +58,10 @@ IServerGameDLL *g_pServerGameDLL = NULL;
 ICvar *g_pLocalCVar = NULL;
 IFileSystem *g_pFileSystem = NULL;
 
-ISteamGameServer008 *g_pSteamGameServer = NULL;
+ISteamGameServer010 *g_pSteamGameServer = NULL;
 ISteamMasterServerUpdater001 *g_pSteamMasterServerUpdater = NULL;
 ISteamUtils005 *g_pSteamUtils = NULL;
 ISteamGameServerStats001 *g_pSteamGameServerStats = NULL;
-
-ISteamGameServer010 *g_pSteamGameServer010 = NULL;
 
 SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
@@ -122,7 +120,7 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ NULL,								NULL }
 };
 
-#define STEAMGAMESERVER_INTERFACE_VERSION 008
+#define STEAMGAMESERVER_INTERFACE_VERSION 010
 #define STEAMMASTERSERVERUPDATER_INTERFACE_VERSION 001
 #define STEAMUTILS_INTERFACE_VERSION 005
 #define STEAMGAMESERVERSTATS_INTERFACE_VERSION 001
@@ -325,12 +323,10 @@ void Hook_GameFrame(bool simulating)
 		if (!LoadSteamclient(&client))
 			return;
 
-		g_pSteamGameServer = (ISteamGameServer008 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
+		g_pSteamGameServer = (ISteamGameServer010 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
 		g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater001 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001);
 		g_pSteamUtils = (ISteamUtils005 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMUTILS_INTERFACE_VERSION_005);
 		g_pSteamGameServerStats = (ISteamGameServerStats001 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamUser(), STEAMGAMESERVERSTATS_INTERFACE_VERSION_001);
-
-		g_pSteamGameServer010 = (ISteamGameServer010 *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
 
 		if (!CheckInterfaces())
 			return;
@@ -352,7 +348,7 @@ bool CheckInterfaces()
 	
 	if (!g_pSteamGameServer)
 	{
-		g_pSM->LogError(myself, "Could not find interface %s", STEAMGAMESERVER_INTERFACE_VERSION_008);
+		g_pSM->LogError(myself, "Could not find interface %s", STEAMGAMESERVER_INTERFACE_VERSION_010);
 		g_SteamLoadFailed = true;
 	}
 	
@@ -371,12 +367,6 @@ bool CheckInterfaces()
 	if (!g_pSteamGameServerStats)
 	{
 		g_pSM->LogError(myself, "Could not find interface %s", STEAMGAMESERVERSTATS_INTERFACE_VERSION_001);
-		g_SteamLoadFailed = true;
-	}
-	
-	if (!g_pSteamGameServer010)
-	{
-		g_pSM->LogError(myself, "Could not find interface %s", STEAMGAMESERVER_INTERFACE_VERSION_010);
 		g_SteamLoadFailed = true;
 	}
 		
@@ -469,7 +459,7 @@ bool LoadSteamclient(ISteamClient008 **pSteamClient, int method)
 
 	pLocalSteamClient = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
 
-	ISteamGameServer008 *gameserver = (ISteamGameServer008 *)pLocalSteamClient->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_008);
+	ISteamGameServer010 *gameserver = (ISteamGameServer010 *)pLocalSteamClient->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
 
 	if (!gameserver)
 	{
@@ -641,12 +631,12 @@ static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *param
 
 static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *params)
 {
-	if (!g_pSteamGameServer010)
+	if (!g_pSteamGameServer)
 		return 0;
 
 	if (g_SteamAPICall == k_uAPICallInvalid)
 	{
-		g_SteamAPICall = g_pSteamGameServer010->GetServerReputation();
+		g_SteamAPICall = g_pSteamGameServer->GetServerReputation();
 		return true;
 	} else {
 		return false;
