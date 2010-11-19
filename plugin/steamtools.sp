@@ -47,6 +47,8 @@ public OnPluginStart()
 
 	RegAdminCmd("sm_printstat", Command_PrintStat, ADMFLAG_ROOT, "Prints the value of a stat for a client.");
 	RegAdminCmd("sm_printachievement", Command_PrintAchievement, ADMFLAG_ROOT, "Prints whether or not a client has earned an achievement.");
+
+	RegAdminCmd("sm_printsubscription", Command_PrintSubscription, ADMFLAG_ROOT, "Shows the Subscription ID of the Steam Subscription that contains the client's game.");
 }
 
 public OnClientAuthorized(client, const String:auth[])
@@ -323,6 +325,46 @@ public Action:Command_PrintAchievement(client, args)
 			ReplyToCommand(client, "[SM] %N %s earned achievement %s.", target_list[i], Steam_IsAchieved(target_list[i], arg2)?"has":"has not", arg2);
 		else
 			ReplyToCommand(client, "[SM] Stats for %N not received yet.", target_list[i]);
+	}
+
+	return Plugin_Handled;
+}
+
+public Action:Command_PrintSubscription(client, args)
+{
+	if (args != 1)
+	{
+		ReplyToCommand(client, "[SM] Usage: sm_printsubscription <client>");
+		return Plugin_Handled;
+	}
+
+	new String:arg1[32];
+	new String:arg2[32];
+
+	GetCmdArg(1, arg1, sizeof(arg1));
+	GetCmdArg(2, arg2, sizeof(arg2));
+ 
+	new String:target_name[MAX_TARGET_LENGTH];
+	new target_list[MAXPLAYERS], target_count;
+	new bool:tn_is_ml;
+ 
+	if ((target_count = ProcessTargetString(
+			arg1,
+			client,
+			target_list,
+			MAXPLAYERS,
+			COMMAND_FILTER_NO_IMMUNITY,
+			target_name,
+			sizeof(target_name),
+			tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+
+	for (new i = 0; i < target_count; i++)
+	{
+		ReplyToCommand(client, "[SM] Client purchased this game as part of subscription %d.", Steam_GetClientSubscription(target_list[i]));
 	}
 
 	return Plugin_Handled;

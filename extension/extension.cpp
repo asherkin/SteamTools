@@ -32,7 +32,7 @@
  * Attributions & Thanks:
  * =============================================================================
  * AzuiSleet          - Wrote the original example code to acquire the SteamClient
- *                      factory.
+ *                      factory, information about GameServer auth tickets.
  * VoiDeD & AzuiSleet - The OpenSteamworks project.
  * Didrole            - Linux autoloading.
  * =============================================================================
@@ -51,6 +51,7 @@ SMEXT_LINK(&g_SteamTools);
 
 SH_DECL_HOOK1_void(IServerGameDLL, GameFrame, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK0(ISteamMasterServerUpdater001, WasRestartRequested, SH_NOATTRIB, 0, bool);
+SH_DECL_HOOK4(ISteamGameServer010, SendUserConnectAndAuthenticate, SH_NOATTRIB, 0, bool, uint32, const void *, uint32, CSteamID *);
 
 ConVar SteamToolsVersion("steamtools_version", SMEXT_CONF_VERSION, FCVAR_NOTIFY|FCVAR_REPLICATED, SMEXT_CONF_DESCRIPTION);
 
@@ -81,6 +82,7 @@ FreeLastCallbackFn FreeLastCallback;
 
 int g_GameFrameHookID = 0;
 int g_WasRestartRequestedHookID = 0;
+int g_SendUserConnectAndAuthenticateHookID = 0;
 
 bool g_SteamServersConnected = false;
 bool g_SteamLoadFailed = false;
@@ -117,6 +119,7 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_GetStat",					GetStatInt },
 	{ "Steam_GetStatFloat",				GetStatFloat },
 	{ "Steam_IsAchieved",				IsAchieved },
+	{ "Steam_GetClientSubscription",	GetClientSubscription },
 	{ NULL,								NULL }
 };
 
@@ -306,7 +309,7 @@ void Hook_GameFrame(bool simulating)
 #elif defined _LINUX
 		CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/libsteam_api.so", "MOD", false);
 #endif
-		
+
 		if ( !pModSteamApi )
 		{
 			g_pSM->LogError(myself, "Unable to get steam_api handle.");
@@ -332,7 +335,8 @@ void Hook_GameFrame(bool simulating)
 			return;
 
 		g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), false);
-
+		g_SendUserConnectAndAuthenticateHookID = SH_ADD_HOOK(ISteamGameServer010, SendUserConnectAndAuthenticate, g_pSteamGameServer, SH_STATIC(Hook_SendUserConnectAndAuthenticate), false);
+		
 		g_pSM->LogMessage(myself, "Loading complete.");
 
 		cell_t dummy;
@@ -510,8 +514,14 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 void SteamTools::OnClientAuthorized(int client, const char *authstring)
 {
 	CSteamID steamID = SteamIDToCSteamID(authstring);
-	if (steamID.GetAccountID())
-		g_SteamClients.AddToTail(CSteamClient(client, steamID));
+	for ( int i = 0; i < g_SteamClients.Count(); ++i )
+	{
+		if (g_SteamClients.Element(i) == steamID)
+		{
+			g_SteamClients.Element(i).SetIndex(client);
+			break;
+		}
+	}
 }
 
 void SteamTools::OnClientDisconnecting(int client)
@@ -535,6 +545,25 @@ bool Hook_WasRestartRequested()
 		g_pForwardRestartRequested->Execute(&cellResults);
 	}
 	RETURN_META_VALUE(MRES_SUPERCEDE, (cellResults < Pl_Handled)?bWasRestartRequested:false);
+}
+
+bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser)
+{
+	if (cubAuthBlobSize != 206)
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected AuthBlob size. (cubAuthBlobSize = %d)", cubAuthBlobSize);
+
+	uint32 *ticketVersion = (uint32 *)((char *)pvAuthBlob + 0x20);
+
+	if (*ticketVersion != 4)
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected ticket version. (ticketVersion = %d)", *ticketVersion);
+
+	CSteamID *steamID = (CSteamID *)((char *)pvAuthBlob + 0x24);
+
+	uint16 *subID = (uint16 *)((char *)pvAuthBlob + 0x46);
+
+	g_SteamClients.AddToTail(CSteamClient(*steamID, *subID));
+
+	RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 }
 
 bool SteamTools::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late)
@@ -583,10 +612,16 @@ void SteamTools::SDK_OnUnload()
 		SH_REMOVE_HOOK_ID(g_WasRestartRequestedHookID);
 		g_WasRestartRequestedHookID = 0;
 	}
+	if (g_SendUserConnectAndAuthenticateHookID != 0)
+	{
+		SH_REMOVE_HOOK_ID(g_SendUserConnectAndAuthenticateHookID);
+		g_SendUserConnectAndAuthenticateHookID = 0;
+	}
 
 	g_pForwards->ReleaseForward(g_pForwardGroupStatusResult);
 	g_pForwards->ReleaseForward(g_pForwardGameplayStats);
 	g_pForwards->ReleaseForward(g_pForwardReputation);
+
 	g_pForwards->ReleaseForward(g_pForwardRestartRequested);
 
 	g_pForwards->ReleaseForward(g_pForwardSteamServersConnected);
@@ -835,6 +870,19 @@ static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params)
 			} else {
 				return pContext->ThrowNativeError("Failed to get achievement %s for client %d", strAchName, params[1]);
 			}
+			break;
+		}
+	}
+	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
+}
+
+static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *params)
+{
+	for ( int i = 0; i < g_SteamClients.Count(); ++i )
+	{
+		if (g_SteamClients.Element(i) == params[1])
+		{
+			return g_SteamClients.Element(i).GetSubID();
 			break;
 		}
 	}
