@@ -48,12 +48,14 @@ public:
 	{
 		this->PlayerIndex = PlayerIndex;
 		this->SteamID = SteamID;
+		this->subIDs = NULL;
 	}
 
-	CSteamClient(CSteamID SteamID, uint16 SubID)
+	CSteamClient(CSteamID SteamID, uint32 subIDs[])
 	{
+		this->PlayerIndex = 0;
 		this->SteamID = SteamID;
-		this->SubID = SubID;
+		this->subIDs = subIDs;
 	}
 
 	bool operator==(const CSteamClient &other) const {
@@ -83,7 +85,7 @@ public:
 public:
 	int GetIndex() const { return PlayerIndex; }
 	CSteamID GetSteamID() const { return SteamID; }
-	uint16 GetSubID() const { return SubID; }
+	uint32 *GetSubIDs() { return subIDs; }
 
 	void SetIndex(int PlayerIndex)
 	{
@@ -93,7 +95,7 @@ public:
 protected:
 	int PlayerIndex;
 	CSteamID SteamID;
-	uint16 SubID;
+	uint32 *subIDs;
 };
 
 /**
@@ -173,7 +175,7 @@ public: //IClientListener
 	void OnClientDisconnecting(int client);
 };
 
-void Hook_GameFrame(bool simulating);
+void Hook_Think(bool finalTick);
 bool Hook_WasRestartRequested();
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser);
 
@@ -198,10 +200,11 @@ static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params);
 static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params);
 static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params);
 
+static cell_t GetNumClientSubscriptions(IPluginContext *pContext, const cell_t *params);
 static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *params);
 
 CSteamID SteamIDToCSteamID(const char *steamID);
 bool CheckInterfaces();
-bool LoadSteamclient(ISteamClient008 **pSteamClient, int method = 0);
+bool LoadSteamclient(ISteamClient009 **pSteamClient, int method = 0);
 
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

@@ -49,7 +49,7 @@
 SteamTools g_SteamTools;
 SMEXT_LINK(&g_SteamTools);
 
-SH_DECL_HOOK1_void(IServerGameDLL, GameFrame, SH_NOATTRIB, 0, bool);
+SH_DECL_HOOK1_void(IServerGameDLL, Think, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK0(ISteamMasterServerUpdater001, WasRestartRequested, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK4(ISteamGameServer010, SendUserConnectAndAuthenticate, SH_NOATTRIB, 0, bool, uint32, const void *, uint32, CSteamID *);
 
@@ -80,7 +80,7 @@ GetUserFn g_GameServerSteamUser;
 GetCallbackFn GetCallback;
 FreeLastCallbackFn FreeLastCallback;
 
-int g_GameFrameHookID = 0;
+int g_ThinkHookID = 0;
 int g_WasRestartRequestedHookID = 0;
 int g_SendUserConnectAndAuthenticateHookID = 0;
 
@@ -102,43 +102,29 @@ IForward *g_pForwardLoaded = NULL;
 
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
-	{ "Steam_RequestGroupStatus",		RequestGroupStatus },
-	{ "Steam_RequestGameplayStats",		RequestGameplayStats },
-	{ "Steam_RequestServerReputation",	RequestServerReputation },
-	{ "Steam_ForceHeartbeat",			ForceHeartbeat },
-	{ "Steam_IsVACEnabled",				IsVACEnabled },
-	{ "Steam_IsConnected",				IsConnected },
-	{ "Steam_GetPublicIP",				GetPublicIP },
-	{ "Steam_SetRule",					SetKeyValue },
-	{ "Steam_ClearRules",				ClearAllKeyValues },
-	{ "Steam_AddMasterServer",			AddMasterServer },
-	{ "Steam_RemoveMasterServer",		RemoveMasterServer },
-	{ "Steam_GetNumMasterServers",		GetNumMasterServers },
-	{ "Steam_GetMasterServerAddress",	GetMasterServerAddress },
-	{ "Steam_RequestStats",				RequestStats },
-	{ "Steam_GetStat",					GetStatInt },
-	{ "Steam_GetStatFloat",				GetStatFloat },
-	{ "Steam_IsAchieved",				IsAchieved },
-	{ "Steam_GetClientSubscription",	GetClientSubscription },
-	{ NULL,								NULL }
+	{ "Steam_RequestGroupStatus",			RequestGroupStatus },
+	{ "Steam_RequestGameplayStats",			RequestGameplayStats },
+	{ "Steam_RequestServerReputation",		RequestServerReputation },
+	{ "Steam_ForceHeartbeat",				ForceHeartbeat },
+	{ "Steam_IsVACEnabled",					IsVACEnabled },
+	{ "Steam_IsConnected",					IsConnected },
+	{ "Steam_GetPublicIP",					GetPublicIP },
+	{ "Steam_SetRule",						SetKeyValue },
+	{ "Steam_ClearRules",					ClearAllKeyValues },
+	{ "Steam_AddMasterServer",				AddMasterServer },
+	{ "Steam_RemoveMasterServer",			RemoveMasterServer },
+	{ "Steam_GetNumMasterServers",			GetNumMasterServers },
+	{ "Steam_GetMasterServerAddress",		GetMasterServerAddress },
+	{ "Steam_RequestStats",					RequestStats },
+	{ "Steam_GetStat",						GetStatInt },
+	{ "Steam_GetStatFloat",					GetStatFloat },
+	{ "Steam_IsAchieved",					IsAchieved },
+	{ "Steam_GetNumClientSubscriptions",	GetNumClientSubscriptions },
+	{ "Steam_GetClientSubscription",		GetClientSubscription },
+	{ NULL,									NULL }
 };
 
-#define STEAMGAMESERVER_INTERFACE_VERSION 010
-#define STEAMMASTERSERVERUPDATER_INTERFACE_VERSION 001
-#define STEAMUTILS_INTERFACE_VERSION 005
-#define STEAMGAMESERVERSTATS_INTERFACE_VERSION 001
-
-/**
- * =============================================================================
- * Testing Area:
- * =============================================================================
- */
-
-/**
- * =============================================================================
- */
-
-void Hook_GameFrame(bool simulating)
+void Hook_Think(bool finalTick)
 {
 	if(g_pSteamGameServer)
 	{
@@ -149,24 +135,24 @@ void Hook_GameFrame(bool simulating)
 			{
 			case GSClientGroupStatus_t::k_iCallback:
 				{
-						GSClientGroupStatus_t *GroupStatus = (GSClientGroupStatus_t *)callbackMsg.m_pubParam;
+					GSClientGroupStatus_t *GroupStatus = (GSClientGroupStatus_t *)callbackMsg.m_pubParam;
 
-						for ( int i = 0; i < g_SteamClients.Count(); ++i )
+					for ( int i = 0; i < g_SteamClients.Count(); ++i )
+					{
+						if (g_SteamClients.Element(i) == GroupStatus->m_SteamIDUser)
 						{
-							if (g_SteamClients.Element(i) == GroupStatus->m_SteamIDUser)
-							{
-								cell_t cellResults = 0;
-								g_pForwardGroupStatusResult->PushCell(g_SteamClients.Element(i).GetIndex());
-								g_pForwardGroupStatusResult->PushCell(GroupStatus->m_SteamIDGroup.GetAccountID());
-								g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bMember);
-								g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bOfficer);
-								g_pForwardGroupStatusResult->Execute(&cellResults);
-								break;
-							}
+							cell_t cellResults = 0;
+							g_pForwardGroupStatusResult->PushCell(g_SteamClients.Element(i).GetIndex());
+							g_pForwardGroupStatusResult->PushCell(GroupStatus->m_SteamIDGroup.GetAccountID());
+							g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bMember);
+							g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bOfficer);
+							g_pForwardGroupStatusResult->Execute(&cellResults);
+							break;
 						}
+					}
 
-						FreeLastCallback(g_GameServerSteamPipe());
-						break;
+					FreeLastCallback(g_GameServerSteamPipe());
+					break;
 				}
 			case GSGameplayStats_t::k_iCallback:
 				{
@@ -303,7 +289,6 @@ void Hook_GameFrame(bool simulating)
 			}
 		}
 	} else {
-
 #if defined _WIN32	
 		CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/steam_api.dll", "MOD", false);
 #elif defined _LINUX
@@ -321,7 +306,7 @@ void Hook_GameFrame(bool simulating)
 		g_GameServerSteamPipe = (GetPipeFn)GetProcAddress(steam_api_library, "SteamGameServer_GetHSteamPipe");
 		g_GameServerSteamUser = (GetUserFn)GetProcAddress(steam_api_library, "SteamGameServer_GetHSteamUser");
 
-		ISteamClient008 *client = NULL;
+		ISteamClient009 *client = NULL;
 
 		if (!LoadSteamclient(&client))
 			return;
@@ -335,7 +320,7 @@ void Hook_GameFrame(bool simulating)
 			return;
 
 		g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), false);
-		g_SendUserConnectAndAuthenticateHookID = SH_ADD_HOOK(ISteamGameServer010, SendUserConnectAndAuthenticate, g_pSteamGameServer, SH_STATIC(Hook_SendUserConnectAndAuthenticate), false);
+		g_SendUserConnectAndAuthenticateHookID = SH_ADD_HOOK(ISteamGameServer010, SendUserConnectAndAuthenticate, g_pSteamGameServer, SH_STATIC(Hook_SendUserConnectAndAuthenticate), true);
 		
 		g_pSM->LogMessage(myself, "Loading complete.");
 
@@ -376,10 +361,10 @@ bool CheckInterfaces()
 		
 	if (g_SteamLoadFailed)
 	{
-		if (g_GameFrameHookID != 0)
+		if (g_ThinkHookID != 0)
 		{
-			SH_REMOVE_HOOK_ID(g_GameFrameHookID);
-			g_GameFrameHookID = 0;
+			SH_REMOVE_HOOK_ID(g_ThinkHookID);
+			g_ThinkHookID = 0;
 		}
 
 		return false;
@@ -388,13 +373,13 @@ bool CheckInterfaces()
 	}
 }
 
-bool LoadSteamclient(ISteamClient008 **pSteamClient, int method)
+bool LoadSteamclient(ISteamClient009 **pSteamClient, int method)
 {
 	if(!g_GameServerSteamPipe || !g_GameServerSteamUser || !g_GameServerSteamPipe() || !g_GameServerSteamUser())
 		return false;
 
 	HMODULE steamclient_library = NULL;
-	ISteamClient008 *pLocalSteamClient = NULL;
+	ISteamClient009 *pLocalSteamClient = NULL;
 
 	g_pSM->LogMessage(myself, "Trying method %d ...", (method + 1));
 
@@ -446,7 +431,7 @@ bool LoadSteamclient(ISteamClient008 **pSteamClient, int method)
 #endif //_WIN32
 	default:
 		{
-			g_pSM->LogMessage(myself, "Shit is fucked.");
+			g_pSM->LogMessage(myself, "Ran out of methods to acquire SteamWorks interfaces.");
 			return false;
 		}
 	}
@@ -458,10 +443,7 @@ bool LoadSteamclient(ISteamClient008 **pSteamClient, int method)
 
 	CreateInterfaceFn steamclient = (CreateInterfaceFn)GetProcAddress(steamclient_library, "CreateInterface");
 
-	GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
-	FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
-
-	pLocalSteamClient = (ISteamClient008 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_008, NULL);
+	pLocalSteamClient = (ISteamClient009 *)steamclient(STEAMCLIENT_INTERFACE_VERSION_009, NULL);
 
 	ISteamGameServer010 *gameserver = (ISteamGameServer010 *)pLocalSteamClient->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION_010);
 
@@ -471,7 +453,12 @@ bool LoadSteamclient(ISteamClient008 **pSteamClient, int method)
 	}
 
 	g_pSM->LogMessage(myself, "Method %d worked!", (method + 1));
+
 	*pSteamClient = pLocalSteamClient;
+
+	GetCallback = (GetCallbackFn)GetProcAddress(steamclient_library, "Steam_BGetCallback");
+	FreeLastCallback = (FreeLastCallbackFn)GetProcAddress(steamclient_library, "Steam_FreeLastCallback");
+
 	return true;
 }
 
@@ -487,7 +474,7 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 		g_pSM->LogMessage(myself, "Functionality is only guaranteed on Team Fortress 2, and may break features of other mods.");
 	}
 
-	g_GameFrameHookID = SH_ADD_HOOK(IServerGameDLL, GameFrame, g_pServerGameDLL, SH_STATIC(Hook_GameFrame), true);
+	g_ThinkHookID = SH_ADD_HOOK(IServerGameDLL, Think, g_pServerGameDLL, SH_STATIC(Hook_Think), true);
 
 	g_pShareSys->AddNatives(myself, g_ExtensionNatives);
 	g_pShareSys->RegisterLibrary(myself, "SteamTools");
@@ -505,6 +492,21 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	g_pForwardClientUnloadedStats = g_pForwards->CreateForward("Steam_StatsUnloaded", ET_Ignore, 1, NULL, Param_Cell);
 
 	g_pForwardLoaded = g_pForwards->CreateForward("Steam_FullyLoaded", ET_Ignore, 0, NULL);
+
+	if (late)
+	{
+		int iMaxClients = playerhelpers->GetMaxClients();
+		for (int iClient = 1; iClient <= iMaxClients; iClient++) {
+			IGamePlayer *pPlayer = playerhelpers->GetGamePlayer(iClient);
+			if (pPlayer == NULL) continue;
+			//if (pPlayer->IsConnected() == false) continue;
+			if (pPlayer->IsAuthorized() == false) continue;
+
+			// Add client
+			CSteamID steamID = SteamIDToCSteamID(pPlayer->GetAuthString());
+			g_SteamClients.AddToTail(CSteamClient(iClient, steamID));
+		}
+	}
 
 	g_pSM->LogMessage(myself, "Initial loading stage complete...");
 
@@ -549,19 +551,53 @@ bool Hook_WasRestartRequested()
 
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser)
 {
-	if (cubAuthBlobSize != 206)
-		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected AuthBlob size. (cubAuthBlobSize = %d)", cubAuthBlobSize);
+	bool ret = META_RESULT_ORIG_RET(bool);
+
+	if (!ret)
+	{
+		if (cubAuthBlobSize == 28) {
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u isn't using Steam.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
+		} else if (cubAuthBlobSize == 190) {
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, pSteamIDUser->Render());
+		} else {
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) was denied by Steam for an unknown reason. (Maybe an expired or stolen ticket?).", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, pSteamIDUser->Render());
+		}
+
+		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
+	}
+
+	if (cubAuthBlobSize == 190)
+	{
+		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode but their ticket hasn't expired yet.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, pSteamIDUser->Render());
+		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
+		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
+	} else if ((cubAuthBlobSize - 202) % sizeof(uint32) != 0) {
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected AuthBlob size. (cubAuthBlobSize = %u)", cubAuthBlobSize);
+		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
+		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
+	}
 
 	uint32 *ticketVersion = (uint32 *)((char *)pvAuthBlob + 0x20);
 
 	if (*ticketVersion != 4)
-		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected ticket version. (ticketVersion = %d)", *ticketVersion);
+	{
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected ticket version. (ticketVersion = %u)", *ticketVersion);
+		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
+		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
+	}
 
-	CSteamID *steamID = (CSteamID *)((char *)pvAuthBlob + 0x24);
+	uint16 countOfSubIDs = *(uint16 *)((char *)pvAuthBlob + 0x44);
+	uint32 *subIDs = new uint32[countOfSubIDs];
 
-	uint16 *subID = (uint16 *)((char *)pvAuthBlob + 0x46);
+	for (int i = 0; i < countOfSubIDs; i++)
+	{
+		uint32 *subID = (uint32 *)((char *)pvAuthBlob + 0x46 + (sizeof(uint32) * i));
+		subIDs[i] = *subID;
+	}
 
-	g_SteamClients.AddToTail(CSteamClient(*steamID, *subID));
+	//META_CONPRINTF("SendUserConnectAndAuthenticate: countOfSubIDs = %u, sizeof(*subIDs) = %u\n", countOfSubIDs, sizeof(*subIDs));
+
+	g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, subIDs));
 
 	RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 }
@@ -602,10 +638,15 @@ bool SteamTools::RegisterConCommandBase(ConCommandBase *pCommand)
 
 void SteamTools::SDK_OnUnload()
 {
-	if (g_GameFrameHookID != 0)
+	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
-		SH_REMOVE_HOOK_ID(g_GameFrameHookID);
-		g_GameFrameHookID = 0;
+		g_SteamClients.Remove(i);
+	}
+
+	if (g_ThinkHookID != 0)
+	{
+		SH_REMOVE_HOOK_ID(g_ThinkHookID);
+		g_ThinkHookID = 0;
 	}
 	if (g_WasRestartRequestedHookID != 0)
 	{
@@ -876,13 +917,44 @@ static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params)
 	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
 }
 
+static cell_t GetNumClientSubscriptions(IPluginContext *pContext, const cell_t *params)
+{
+	for ( int i = 0; i < g_SteamClients.Count(); ++i )
+	{
+		if (g_SteamClients.Element(i) == params[1])
+		{
+			if (g_SteamClients.Element(i).GetSubIDs() != NULL)
+			{
+				uint32 *subIDs = g_SteamClients.Element(i).GetSubIDs();
+				return sizeof(*subIDs) / sizeof(uint32);
+			} else {
+				return pContext->ThrowNativeError("No subscriptions were found for client %d", params[1]);
+			}
+			break;
+		}
+	}
+	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
+}
+
 static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *params)
 {
 	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
 		if (g_SteamClients.Element(i) == params[1])
 		{
-			return g_SteamClients.Element(i).GetSubID();
+			if (g_SteamClients.Element(i).GetSubIDs() != NULL)
+			{
+				int index = params[2];
+				if (index+1 > sizeof(*g_SteamClients.Element(i).GetSubIDs()) / sizeof(uint32))
+				{
+					return pContext->ThrowNativeError("Subscription index %d is out of bounds for client %d", index, params[1]);
+				} else {
+					uint32 *subIDs = g_SteamClients.Element(i).GetSubIDs();
+					return subIDs[index];
+				}
+			} else {
+				return pContext->ThrowNativeError("No subscriptions were found for client %d", params[1]);
+			}
 			break;
 		}
 	}

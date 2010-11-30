@@ -34,7 +34,8 @@ native bool:Steam_IsAchieved(client, String:achievementName[]);
 forward Steam_StatsReceived(client);
 forward Steam_StatsUnloaded(client);
 
-native Steam_GetClientSubscription(client);
+native Steam_GetNumClientSubscriptions(client);
+native Steam_GetClientSubscription(client, index);
 
 forward Steam_FullyLoaded();
 

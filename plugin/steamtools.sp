@@ -364,7 +364,11 @@ public Action:Command_PrintSubscription(client, args)
 
 	for (new i = 0; i < target_count; i++)
 	{
-		ReplyToCommand(client, "[SM] Client purchased this game as part of subscription %d.", Steam_GetClientSubscription(target_list[i]));
+		new subCount = Steam_GetNumClientSubscriptions(target_list[i]);
+		for (new x = 0; x < subCount; x++)
+		{
+			ReplyToCommand(client, "[SM] Client purchased this game as part of subscription %d.", Steam_GetClientSubscription(target_list[i], x));
+		}
 	}
 
 	return Plugin_Handled;
