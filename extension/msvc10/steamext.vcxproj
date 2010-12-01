@@ -121,6 +121,7 @@
     <ClInclude Include="..\extension.h" />
     <ClInclude Include="..\sdk\smsdk_config.h" />
     <ClInclude Include="..\sdk\smsdk_ext.h" />
+    <ClInclude Include="..\tickets.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\plugin\steamtools.inc" />

@@ -6,7 +6,7 @@
 #define REQUIRE_EXTENSIONS
 #include <steamtools>
 
-#define PLUGIN_VERSION "0.5.1"
+#define PLUGIN_VERSION "0.5.2"
 
 public Plugin:myinfo = {
 	name        = "SteamTools Tester",

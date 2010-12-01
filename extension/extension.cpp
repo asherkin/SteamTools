@@ -40,6 +40,7 @@
 
 #include "extension.h"
 #include "filesystem.h"
+#include "tickets.h"
 
 /**
  * @file extension.cpp
@@ -552,50 +553,41 @@ bool Hook_WasRestartRequested()
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser)
 {
 	bool ret = META_RESULT_ORIG_RET(bool);
+	AuthBlob_t authblob = AuthBlob_t(pvAuthBlob);
 
 	if (!ret)
 	{
-		if (cubAuthBlobSize == 28) {
-			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u isn't using Steam.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
-		} else if (cubAuthBlobSize == 190) {
-			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, pSteamIDUser->Render());
+		if (!authblob.ownership) {
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) isn't using Steam.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.section->steamid.Render());
+		} else if (!authblob.section) {
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
 		} else {
-			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) was denied by Steam for an unknown reason. (Maybe an expired or stolen ticket?).", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, pSteamIDUser->Render());
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) was denied by Steam for an unknown reason. (Maybe an expired or stolen ticket?).", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
 		}
 
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
-	if (cubAuthBlobSize == 190)
+	if (!authblob.section && authblob.ownership)
 	{
-		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode but their ticket hasn't expired yet.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, pSteamIDUser->Render());
+		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode but their ticket hasn't expired yet.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
 		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
-	} else if ((cubAuthBlobSize - 202) % sizeof(uint32) != 0) {
-		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected AuthBlob size. (cubAuthBlobSize = %u)", cubAuthBlobSize);
-		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
-		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
-	}
-
-	uint32 *ticketVersion = (uint32 *)((char *)pvAuthBlob + 0x20);
-
-	if (*ticketVersion != 4)
-	{
-		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected ticket version. (ticketVersion = %u)", *ticketVersion);
+	} else if (!authblob.section || !authblob.ownership) {
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to missing sections in ticket. (authblob.totallen = %u)", authblob.totallen);
 		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
-	uint16 countOfSubIDs = *(uint16 *)((char *)pvAuthBlob + 0x44);
-	uint32 *subIDs = new uint32[countOfSubIDs];
-
-	for (int i = 0; i < countOfSubIDs; i++)
+	if (authblob.ownership->ticket->version != 4)
 	{
-		uint32 *subID = (uint32 *)((char *)pvAuthBlob + 0x46 + (sizeof(uint32) * i));
-		subIDs[i] = *subID;
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected ticket version. (ticketVersion = %u)", authblob.ownership->ticket->version);
+		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
+		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
-	//META_CONPRINTF("SendUserConnectAndAuthenticate: countOfSubIDs = %u, sizeof(*subIDs) = %u\n", countOfSubIDs, sizeof(*subIDs));
+	uint32 *subIDs = new uint32[authblob.ownership->ticket->numlicenses];
+	memmove(subIDs, authblob.ownership->ticket->licenses, sizeof(subIDs));
 
 	g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, subIDs));
 
