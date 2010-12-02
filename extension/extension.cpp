@@ -574,7 +574,7 @@ bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBl
 		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	} else if (!authblob.section || !authblob.ownership) {
-		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to missing sections in ticket. (authblob.totallen = %u)", authblob.totallen);
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to missing sections in ticket. (authblob.length = %u)", authblob.length);
 		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
@@ -586,10 +586,7 @@ bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBl
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
-	uint32 *subIDs = new uint32[authblob.ownership->ticket->numlicenses];
-	memmove(subIDs, authblob.ownership->ticket->licenses, sizeof(subIDs));
-
-	g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, subIDs));
+	g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, authblob.ownership->ticket->licenses));
 
 	RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 }

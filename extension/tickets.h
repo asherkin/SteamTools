@@ -9,7 +9,7 @@ class Section_t
 public:
 	Section_t(
 		uint32 length,
-		char unknown[8], 
+		unsigned char unknown[8], 
 		CSteamID steamid, 
 		__time32_t generation)
 	{
@@ -21,7 +21,7 @@ public:
 
 	//private:
 	uint32 length;
-	char unknown[8];
+	unsigned char unknown[8];
 	CSteamID steamid;
 	__time32_t generation;
 };
@@ -83,7 +83,7 @@ public:
 	OwnershipSection_t(
 		uint32 length, 
 		OwnershipTicket_t *ticket, 
-		char signature[128])
+		unsigned char signature[128])
 	{
 		this->length = length;
 		this->ticket = ticket;
@@ -98,7 +98,7 @@ public:
 	//private:
 	uint32 length;
 	OwnershipTicket_t *ticket;
-	char signature[128];
+	unsigned char signature[128];
 };
 
 class AuthBlob_t 
@@ -116,7 +116,7 @@ public:
 			pos += sectionlength;
 			section = NULL;
 		} else {
-			char unknown[8];
+			unsigned char unknown[8];
 			memcpy(&unknown, ((char *)pvAuthBlob + pos), 8);
 			pos += 8;
 			CSteamID steamid = *(CSteamID *)((char *)pvAuthBlob + pos);
@@ -129,7 +129,7 @@ public:
 				unknown,
 				steamid,
 				generation
-			);
+				);
 		}
 
 		uint32 section2length = *(uint32 *)((char *)pvAuthBlob + pos);
@@ -171,43 +171,48 @@ public:
 			uint32 filler = *(uint32 *)((char *)pvAuthBlob + pos);
 			pos += sizeof(uint32);
 
-			char signature[128];
+			unsigned char signature[128];
 			memcpy(&signature, ((char *)pvAuthBlob + pos), 128);
 			pos += 128;
 
 			ownership = new OwnershipSection_t(
 				section2length,
 				new OwnershipTicket_t(
-					length,
-					version,
-					steamid,
-					appid,
-					externalip,
-					internalip,
-					ownershipflags,
-					generation,
-					expiration,
-					numlicenses,
-					licenses,
-					filler
+				length,
+				version,
+				steamid,
+				appid,
+				externalip,
+				internalip,
+				ownershipflags,
+				generation,
+				expiration,
+				numlicenses,
+				licenses,
+				filler
 				),
 				signature
-			);
+				);
 		}
 
-		this->totallen = pos;
+		this->length = pos;
+
+		this->blob = new unsigned char[pos];
+		memcpy(this->blob, pvAuthBlob, pos);
 	}
 
 	~AuthBlob_t()
 	{
 		delete section;
 		delete ownership;
+		delete blob;
 	}
 
-//private:
-	uint32 totallen;
+	//private:
+	uint32 length;
 	Section_t *section;
 	OwnershipSection_t *ownership;
+	unsigned char *blob;
 };
 
 #endif // tickets_h__

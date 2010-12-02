@@ -55,7 +55,14 @@ public:
 	{
 		this->PlayerIndex = 0;
 		this->SteamID = SteamID;
-		this->subIDs = subIDs;
+
+		if (subIDs != NULL)
+		{
+			this->subIDs = (uint32 *)malloc(sizeof(*subIDs));
+			memcpy(this->subIDs, subIDs, sizeof(*subIDs));
+		} else {
+			subIDs = NULL;
+		}
 	}
 
 	bool operator==(const CSteamClient &other) const {
