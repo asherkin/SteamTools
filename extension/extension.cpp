@@ -479,7 +479,8 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 	g_pShareSys->AddNatives(myself, g_ExtensionNatives);
 	g_pShareSys->RegisterLibrary(myself, "SteamTools");
-	playerhelpers->AddClientListener(&g_SteamTools);
+	playerhelpers->AddClientListener(this);
+	plsys->AddPluginsListener(this);
 
 	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 4, NULL, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardGameplayStats = g_pForwards->CreateForward("Steam_GameplayStats", ET_Ignore, 3, NULL, Param_Cell, Param_Cell, Param_Cell);
@@ -506,6 +507,20 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 			// Add client
 			CSteamID steamID = SteamIDToCSteamID(pPlayer->GetAuthString());
 			g_SteamClients.AddToTail(CSteamClient(iClient, steamID));
+		}
+
+		if (g_pSteamGameServer)
+		{
+			cell_t dummy;
+
+			g_pForwardLoaded->Execute(&dummy);
+
+			if (g_SteamServersConnected)
+			{
+				g_pForwardSteamServersConnected->Execute(&dummy);
+			} else {
+				g_pForwardSteamServersDisconnected->Execute(&dummy);
+			}
 		}
 	}
 
@@ -535,6 +550,47 @@ void SteamTools::OnClientDisconnecting(int client)
 		{
 			g_SteamClients.Remove(i);
 			break;
+		}
+	}
+}
+
+void SteamTools::OnPluginLoaded(IPlugin *plugin)
+{
+	if (g_pSteamGameServer)
+	{
+		cell_t result;
+
+		IPluginContext *pluginContext = plugin->GetRuntime()->GetDefaultContext();
+
+		IPluginFunction *steamToolsLoadedCallback = pluginContext->GetFunctionByName("Steam_FullyLoaded");
+
+		if (steamToolsLoadedCallback)
+		{
+			int funcError = steamToolsLoadedCallback->CallFunction(NULL, 0, &result);
+			if (funcError != SP_ERROR_NONE)
+			{
+				pluginContext->ThrowNativeErrorEx(SP_ERROR_NOT_RUNNABLE, "Failed to fire Steam_FullyLoaded callback: %d", funcError);
+			}
+		} else {
+			// This plugin doesn't use SteamTools
+			return;
+		}
+
+		IPluginFunction *steamConnectionStateCallback = NULL;
+		if (g_SteamServersConnected)
+		{
+			pluginContext->GetFunctionByName("Steam_SteamServersConnected");
+		} else {
+			pluginContext->GetFunctionByName("Steam_SteamServersDisconnected");
+		}
+
+		if (steamConnectionStateCallback)
+		{
+			int funcError = steamConnectionStateCallback->CallFunction(NULL, 0, &result);
+			if (funcError != SP_ERROR_NONE)
+			{
+				pluginContext->ThrowNativeErrorEx(SP_ERROR_NOT_RUNNABLE, "Failed to fire Steam_SteamServers[Connected|Disconnected] callback: %d", funcError);
+			}
 		}
 	}
 }
@@ -658,6 +714,7 @@ void SteamTools::SDK_OnUnload()
 	g_pForwards->ReleaseForward(g_pForwardSteamServersDisconnected);
 
 	playerhelpers->RemoveClientListener(this);
+	plsys->RemovePluginsListener(this);
 }
 
 bool SteamTools::QueryRunning( char *error, size_t maxlen )
@@ -727,10 +784,13 @@ static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params)
 
 static cell_t IsConnected(IPluginContext *pContext, const cell_t *params)
 {
+	/*
 	if (!g_pSteamGameServer)
 		return 0;
 
 	return g_pSteamGameServer->LoggedOn();
+	*/
+	return g_SteamServersConnected;
 }
 
 static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params)
@@ -934,7 +994,7 @@ static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *para
 			if (g_SteamClients.Element(i).GetSubIDs() != NULL)
 			{
 				int index = params[2];
-				if (index+1 > sizeof(*g_SteamClients.Element(i).GetSubIDs()) / sizeof(uint32))
+				if (index >= sizeof(*g_SteamClients.Element(i).GetSubIDs()) / sizeof(uint32))
 				{
 					return pContext->ThrowNativeError("Subscription index %d is out of bounds for client %d", index, params[1]);
 				} else {

@@ -109,7 +109,11 @@ protected:
  * @brief Sample implementation of the SDK Extension.
  * Note: Uncomment one of the pre-defined virtual functions in order to use it.
  */
-class SteamTools : public SDKExtension, public IConCommandBaseAccessor, public IClientListener
+class SteamTools: 
+	public SDKExtension, 
+	public IConCommandBaseAccessor, 
+	public IClientListener, 
+	public IPluginsListener
 {
 public:
 	/**
@@ -180,6 +184,9 @@ public: //IConCommandBaseAccessor
 public: //IClientListener
 	void OnClientAuthorized(int client, const char *authstring);
 	void OnClientDisconnecting(int client);
+
+public: //IPluginsListener
+	void OnPluginLoaded(IPlugin *plugin);
 };
 
 void Hook_Think(bool finalTick);
