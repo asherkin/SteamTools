@@ -323,7 +323,7 @@ void Hook_Think(bool finalTick)
 		g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), false);
 		g_SendUserConnectAndAuthenticateHookID = SH_ADD_HOOK(ISteamGameServer010, SendUserConnectAndAuthenticate, g_pSteamGameServer, SH_STATIC(Hook_SendUserConnectAndAuthenticate), true);
 		
-		g_pSM->LogMessage(myself, "Loading complete.");
+		g_SMAPI->ConPrintf("[STEAMTOOLS] Loading complete.\n");
 
 		cell_t dummy;
 		g_pForwardLoaded->Execute(&dummy);
@@ -382,7 +382,7 @@ bool LoadSteamclient(ISteamClient009 **pSteamClient, int method)
 	HMODULE steamclient_library = NULL;
 	ISteamClient009 *pLocalSteamClient = NULL;
 
-	g_pSM->LogMessage(myself, "Trying method %d ...", (method + 1));
+	g_SMAPI->ConPrintf("[STEAMTOOLS] Trying method %d ...\n", (method + 1));
 
 	switch(method)
 	{
@@ -432,7 +432,7 @@ bool LoadSteamclient(ISteamClient009 **pSteamClient, int method)
 #endif //_WIN32
 	default:
 		{
-			g_pSM->LogMessage(myself, "Ran out of methods to acquire SteamWorks interfaces.");
+			g_pSM->LogError(myself, "Ran out of methods to acquire SteamWorks interfaces.");
 			return false;
 		}
 	}
@@ -453,7 +453,7 @@ bool LoadSteamclient(ISteamClient009 **pSteamClient, int method)
 		return LoadSteamclient(pSteamClient, (method + 1));
 	}
 
-	g_pSM->LogMessage(myself, "Method %d worked!", (method + 1));
+	g_SMAPI->ConPrintf("[STEAMTOOLS] Method %d worked!\n", (method + 1));
 
 	*pSteamClient = pLocalSteamClient;
 
@@ -524,7 +524,7 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 		}
 	}
 
-	g_pSM->LogMessage(myself, "Initial loading stage complete...");
+	g_SMAPI->ConPrintf("[STEAMTOOLS] Initial loading stage complete...\n");
 
 	return true;
 }
