@@ -329,6 +329,13 @@ void Hook_Think(bool finalTick)
 		g_pForwardLoaded->Execute(&dummy);
 
 		g_SteamServersConnected = g_pSteamGameServer->LoggedOn();
+
+		if (g_SteamServersConnected)
+		{
+			g_pForwardSteamServersConnected->Execute(&dummy);
+		} else {
+			g_pForwardSteamServersDisconnected->Execute(&dummy);
+		}
 	}
 }
 
@@ -479,6 +486,7 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 	g_pShareSys->AddNatives(myself, g_ExtensionNatives);
 	g_pShareSys->RegisterLibrary(myself, "SteamTools");
+
 	playerhelpers->AddClientListener(this);
 	plsys->AddPluginsListener(this);
 
@@ -507,20 +515,6 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 			// Add client
 			CSteamID steamID = SteamIDToCSteamID(pPlayer->GetAuthString());
 			g_SteamClients.AddToTail(CSteamClient(iClient, steamID));
-		}
-
-		if (g_pSteamGameServer)
-		{
-			cell_t dummy;
-
-			g_pForwardLoaded->Execute(&dummy);
-
-			if (g_SteamServersConnected)
-			{
-				g_pForwardSteamServersConnected->Execute(&dummy);
-			} else {
-				g_pForwardSteamServersDisconnected->Execute(&dummy);
-			}
 		}
 	}
 
@@ -566,11 +560,8 @@ void SteamTools::OnPluginLoaded(IPlugin *plugin)
 
 		if (steamToolsLoadedCallback)
 		{
-			int funcError = steamToolsLoadedCallback->CallFunction(NULL, 0, &result);
-			if (funcError != SP_ERROR_NONE)
-			{
-				pluginContext->ThrowNativeErrorEx(SP_ERROR_NOT_RUNNABLE, "Failed to fire Steam_FullyLoaded callback: %d", funcError);
-			}
+			steamToolsLoadedCallback->CallFunction(NULL, 0, &result);
+			g_pSM->LogMessage(myself, "Firing Steam_FullyLoaded callback in %s.", plugin->GetPublicInfo()->name);
 		} else {
 			// This plugin doesn't use SteamTools
 			return;
@@ -579,18 +570,15 @@ void SteamTools::OnPluginLoaded(IPlugin *plugin)
 		IPluginFunction *steamConnectionStateCallback = NULL;
 		if (g_SteamServersConnected)
 		{
-			pluginContext->GetFunctionByName("Steam_SteamServersConnected");
+			steamConnectionStateCallback = pluginContext->GetFunctionByName("Steam_SteamServersConnected");
 		} else {
-			pluginContext->GetFunctionByName("Steam_SteamServersDisconnected");
+			steamConnectionStateCallback = pluginContext->GetFunctionByName("Steam_SteamServersDisconnected");
 		}
 
 		if (steamConnectionStateCallback)
 		{
-			int funcError = steamConnectionStateCallback->CallFunction(NULL, 0, &result);
-			if (funcError != SP_ERROR_NONE)
-			{
-				pluginContext->ThrowNativeErrorEx(SP_ERROR_NOT_RUNNABLE, "Failed to fire Steam_SteamServers[Connected|Disconnected] callback: %d", funcError);
-			}
+			steamConnectionStateCallback->CallFunction(NULL, 0, &result);
+			g_pSM->LogMessage(myself, "Firing Steam_SteamServers[Connected|Disconnected] callback in %s.", plugin->GetPublicInfo()->name);
 		}
 	}
 }
