@@ -561,7 +561,6 @@ void SteamTools::OnPluginLoaded(IPlugin *plugin)
 		if (steamToolsLoadedCallback)
 		{
 			steamToolsLoadedCallback->CallFunction(NULL, 0, &result);
-			g_pSM->LogMessage(myself, "Firing Steam_FullyLoaded callback in %s.", plugin->GetPublicInfo()->name);
 		} else {
 			// This plugin doesn't use SteamTools
 			return;
@@ -578,7 +577,6 @@ void SteamTools::OnPluginLoaded(IPlugin *plugin)
 		if (steamConnectionStateCallback)
 		{
 			steamConnectionStateCallback->CallFunction(NULL, 0, &result);
-			g_pSM->LogMessage(myself, "Firing Steam_SteamServers[Connected|Disconnected] callback in %s.", plugin->GetPublicInfo()->name);
 		}
 	}
 }
