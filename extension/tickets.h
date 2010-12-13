@@ -11,7 +11,7 @@ public:
 		uint32 length,
 		unsigned char unknown[8], 
 		CSteamID steamid, 
-		__time32_t generation)
+		time_t generation)
 	{
 		this->length = length;
 		memcpy(this->unknown, unknown, 8);
@@ -23,7 +23,7 @@ public:
 	uint32 length;
 	unsigned char unknown[8];
 	CSteamID steamid;
-	__time32_t generation;
+	time_t generation;
 };
 
 class OwnershipTicket_t
@@ -37,8 +37,8 @@ public:
 		uint32 externalip, 
 		uint32 internalip, 
 		uint32 ownershipflags, 
-		__time32_t generation, 
-		__time32_t expiration, 
+		time_t generation, 
+		time_t expiration, 
 		uint16 numlicenses, 
 		uint32 licenses[], 
 		uint32 filler)
@@ -70,8 +70,8 @@ public:
 	uint32 externalip;
 	uint32 internalip;
 	uint32 ownershipflags;
-	__time32_t generation;
-	__time32_t expiration;
+	time_t generation;
+	time_t expiration;
 	uint16 numlicenses;
 	uint32 *licenses;
 	uint32 filler;
@@ -121,8 +121,8 @@ public:
 			pos += 8;
 			CSteamID steamid = *(CSteamID *)((char *)pvAuthBlob + pos);
 			pos += sizeof(CSteamID);
-			__time32_t generation = *(__time32_t *)((char *)pvAuthBlob + pos);
-			pos += sizeof(__time32_t);
+			time_t generation = *(uint32 *)((char *)pvAuthBlob + pos);
+			pos += sizeof(uint32);
 
 			section = new Section_t(
 				sectionlength,
@@ -154,10 +154,10 @@ public:
 			pos += sizeof(uint32);
 			uint32 ownershipflags = *(uint32 *)((char *)pvAuthBlob + pos);
 			pos += sizeof(uint32);
-			__time32_t generation = *(__time32_t *)((char *)pvAuthBlob + pos);
-			pos += sizeof(__time32_t);
-			__time32_t expiration = *(__time32_t *)((char *)pvAuthBlob + pos);
-			pos += sizeof(__time32_t);
+			time_t generation = *(uint32 *)((char *)pvAuthBlob + pos);
+			pos += sizeof(uint32);
+			time_t expiration = *(uint32 *)((char *)pvAuthBlob + pos);
+			pos += sizeof(uint32);
 			uint16 numlicenses = *(uint16 *)((char *)pvAuthBlob + pos);
 			pos += sizeof(uint16);
 

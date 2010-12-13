@@ -981,10 +981,10 @@ static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *para
 		{
 			if (g_SteamClients.Element(i).GetSubIDs() != NULL)
 			{
-				int index = params[2];
+				uint32 index = params[2];
 				if (index >= sizeof(*g_SteamClients.Element(i).GetSubIDs()) / sizeof(uint32))
 				{
-					return pContext->ThrowNativeError("Subscription index %d is out of bounds for client %d", index, params[1]);
+					return pContext->ThrowNativeError("Subscription index %u is out of bounds for client %d", index, params[1]);
 				} else {
 					uint32 *subIDs = g_SteamClients.Element(i).GetSubIDs();
 					return subIDs[index];
