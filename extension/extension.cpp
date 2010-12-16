@@ -531,9 +531,10 @@ void SteamTools::OnClientAuthorized(int client, const char *authstring)
 		if (g_SteamClients.Element(i) == steamID)
 		{
 			g_SteamClients.Element(i).SetIndex(client);
-			break;
+			return;
 		}
 	}
+	g_pSM->LogError(myself, "No g_SteamClients entry found for client %d, couldn't link index to SteamID. (%llu)", client, steamID.ConvertToUint64());
 }
 
 void SteamTools::OnClientDisconnecting(int client)
@@ -543,9 +544,10 @@ void SteamTools::OnClientDisconnecting(int client)
 		if (g_SteamClients.Element(i) == client)
 		{
 			g_SteamClients.Remove(i);
-			break;
+			return;
 		}
 	}
+	g_pSM->LogError(myself, "No g_SteamClients entry found for client %d, couldn't remove their entry.", client);
 }
 
 void SteamTools::OnPluginLoaded(IPlugin *plugin)
