@@ -509,7 +509,7 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 		for (int iClient = 1; iClient <= iMaxClients; iClient++) {
 			IGamePlayer *pPlayer = playerhelpers->GetGamePlayer(iClient);
 			if (pPlayer == NULL) continue;
-			//if (pPlayer->IsConnected() == false) continue;
+			if (pPlayer->IsFakeClient() == true) continue;
 			if (pPlayer->IsAuthorized() == false) continue;
 
 			// Add client
@@ -525,6 +525,12 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 void SteamTools::OnClientAuthorized(int client, const char *authstring)
 {
+	IGamePlayer *pPlayer = playerhelpers->GetGamePlayer(client);
+	if (pPlayer->IsFakeClient())
+	{
+		return;
+	}
+
 	CSteamID steamID = SteamIDToCSteamID(authstring);
 	for ( int i = 0; i < g_SteamClients.Count(); ++i )
 	{
