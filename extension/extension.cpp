@@ -69,7 +69,7 @@ ISteamGameServerStats001 *g_pSteamGameServerStats = NULL;
 SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
 
-typedef CUtlMap<uint32, CCopyableUtlVector<uint32>> SubIDMap;
+typedef CUtlMap<uint32, CCopyableUtlVector<uint32> > SubIDMap;
 
 bool SubIDLessFunc(const SubIDMap::KeyType_t &in1, const SubIDMap::KeyType_t &in2)
 {
