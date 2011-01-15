@@ -41,6 +41,7 @@
 #include "extension.h"
 #include "filesystem.h"
 #include "tickets.h"
+#include "utlmap.h"
 
 /**
  * @file extension.cpp
@@ -67,7 +68,15 @@ ISteamGameServerStats001 *g_pSteamGameServerStats = NULL;
 
 SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
-CUtlVector<CSteamClient> g_SteamClients;
+
+typedef CUtlMap<uint32, CCopyableUtlVector<uint32>> SubIDMap;
+
+bool SubIDLessFunc(const SubIDMap::KeyType_t &in1, const SubIDMap::KeyType_t &in2)
+{
+	return (in1 < in2);
+};
+
+SubIDMap g_subIDs(SubIDLessFunc);
 
 typedef HSteamPipe (*GetPipeFn)();
 typedef HSteamUser (*GetUserFn)();
@@ -138,12 +147,20 @@ void Hook_Think(bool finalTick)
 				{
 					GSClientGroupStatus_t *GroupStatus = (GSClientGroupStatus_t *)callbackMsg.m_pubParam;
 
-					for ( int i = 0; i < g_SteamClients.Count(); ++i )
+					for ( int i = 0; i < playerhelpers->GetMaxClients(); ++i )
 					{
-						if (g_SteamClients.Element(i) == GroupStatus->m_SteamIDUser)
+						IGamePlayer *player = playerhelpers->GetGamePlayer(i);
+						if (!player)
+							continue;
+
+						edict_t *playerEdict = player->GetEdict();
+						if (!playerEdict)
+							continue;
+
+						if (*engine->GetClientSteamID(playerEdict) == GroupStatus->m_SteamIDUser)
 						{
 							cell_t cellResults = 0;
-							g_pForwardGroupStatusResult->PushCell(g_SteamClients.Element(i).GetIndex());
+							g_pForwardGroupStatusResult->PushCell(i);
 							g_pForwardGroupStatusResult->PushCell(GroupStatus->m_SteamIDGroup.GetAccountID());
 							g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bMember);
 							g_pForwardGroupStatusResult->PushCell(GroupStatus->m_bOfficer);
@@ -236,12 +253,20 @@ void Hook_Think(bool finalTick)
 						} else {
 							if (StatsReceived.m_eResult == k_EResultOK)
 							{
-								for ( int i = 0; i < g_SteamClients.Count(); ++i )
+								for ( int i = 0; i < playerhelpers->GetMaxClients(); ++i )
 								{
-									if (g_SteamClients.Element(i) == StatsReceived.m_steamIDUser)
+									IGamePlayer *player = playerhelpers->GetGamePlayer(i);
+									if (!player)
+										continue;
+
+									edict_t *playerEdict = player->GetEdict();
+									if (!playerEdict)
+										continue;
+
+									if (*engine->GetClientSteamID(playerEdict) == StatsReceived.m_steamIDUser)
 									{
 										cell_t cellResults = 0;
-										g_pForwardClientReceivedStats->PushCell(g_SteamClients.Element(i).GetIndex());
+										g_pForwardClientReceivedStats->PushCell(i);
 										g_pForwardClientReceivedStats->Execute(&cellResults);
 										break;
 									}
@@ -268,12 +293,20 @@ void Hook_Think(bool finalTick)
 				{
 					GSStatsUnloaded_t *StatsUnloaded = (GSStatsUnloaded_t *)callbackMsg.m_pubParam;
 
-					for ( int i = 0; i < g_SteamClients.Count(); ++i )
+					for ( int i = 0; i < playerhelpers->GetMaxClients(); ++i )
 					{
-						if (g_SteamClients.Element(i) == StatsUnloaded->m_steamIDUser)
+						IGamePlayer *player = playerhelpers->GetGamePlayer(i);
+						if (!player)
+							continue;
+
+						edict_t *playerEdict = player->GetEdict();
+						if (!playerEdict)
+							continue;
+
+						if (*engine->GetClientSteamID(playerEdict) == StatsUnloaded->m_steamIDUser)
 						{
 							cell_t cellResults = 0;
-							g_pForwardClientUnloadedStats->PushCell(g_SteamClients.Element(i).GetIndex());
+							g_pForwardClientUnloadedStats->PushCell(i);
 							g_pForwardClientUnloadedStats->Execute(&cellResults);
 							break;
 						}
@@ -503,57 +536,18 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 	g_pForwardLoaded = g_pForwards->CreateForward("Steam_FullyLoaded", ET_Ignore, 0, NULL);
 
-	if (late)
-	{
-		int iMaxClients = playerhelpers->GetMaxClients();
-		for (int iClient = 1; iClient <= iMaxClients; iClient++) {
-			IGamePlayer *pPlayer = playerhelpers->GetGamePlayer(iClient);
-			if (pPlayer == NULL) continue;
-			if (pPlayer->IsFakeClient() == true) continue;
-			if (pPlayer->IsAuthorized() == false) continue;
-
-			// Add client
-			CSteamID steamID = SteamIDToCSteamID(pPlayer->GetAuthString());
-			g_SteamClients.AddToTail(CSteamClient(iClient, steamID));
-		}
-	}
-
 	g_SMAPI->ConPrintf("[STEAMTOOLS] Initial loading stage complete...\n");
 
 	return true;
 }
 
-void SteamTools::OnClientAuthorized(int client, const char *authstring)
-{
-	IGamePlayer *pPlayer = playerhelpers->GetGamePlayer(client);
-	if (pPlayer->IsFakeClient())
-	{
-		return;
-	}
-
-	CSteamID steamID = SteamIDToCSteamID(authstring);
-	for ( int i = 0; i < g_SteamClients.Count(); ++i )
-	{
-		if (g_SteamClients.Element(i) == steamID)
-		{
-			g_SteamClients.Element(i).SetIndex(client);
-			return;
-		}
-	}
-	g_pSM->LogError(myself, "No g_SteamClients entry found for client %d, couldn't link index to SteamID. (%llu)", client, steamID.ConvertToUint64());
-}
-
 void SteamTools::OnClientDisconnecting(int client)
 {
-	for ( int i = 0; i < g_SteamClients.Count(); ++i )
-	{
-		if (g_SteamClients.Element(i) == client)
-		{
-			g_SteamClients.Remove(i);
-			return;
-		}
-	}
-	g_pSM->LogError(myself, "No g_SteamClients entry found for client %d, couldn't remove their entry.", client);
+	const CSteamID *pSteamID = engine->GetClientSteamID(playerhelpers->GetGamePlayer(client)->GetEdict());
+	if (!pSteamID)
+		return g_pSM->LogError(myself, "No Steam ID found for client %d (OnClientDisconnecting)", client);
+
+	g_subIDs.Remove(pSteamID->GetAccountID());
 }
 
 void SteamTools::OnPluginLoaded(IPlugin *plugin)
@@ -608,7 +602,7 @@ bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBl
 	if (!ret)
 	{
 		if (!authblob.ownership) {
-			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) isn't using Steam.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.section->steamid.Render());
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) isn't using Steam.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, (authblob.section)?(authblob.section->steamid.Render()):("NO STEAMID"));
 		} else if (!authblob.section) {
 			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
 		} else {
@@ -621,22 +615,20 @@ bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBl
 	if (!authblob.section && authblob.ownership)
 	{
 		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode but their ticket hasn't expired yet.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
-		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	} else if (!authblob.section || !authblob.ownership) {
 		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to missing sections in ticket. (authblob.length = %u)", authblob.length);
-		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
 	if (authblob.ownership->ticket->version != 4)
 	{
 		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected ticket version. (ticketVersion = %u)", authblob.ownership->ticket->version);
-		g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, NULL));
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
-	g_SteamClients.AddToTail(CSteamClient(*pSteamIDUser, authblob.ownership->ticket->licenses));
+	SubIDMap::IndexType_t index = g_subIDs.Insert(pSteamIDUser->GetAccountID());
+	g_subIDs.Element(index).CopyArray(authblob.ownership->ticket->licenses, authblob.ownership->ticket->numlicenses);
 
 	RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 }
@@ -677,11 +669,6 @@ bool SteamTools::RegisterConCommandBase(ConCommandBase *pCommand)
 
 void SteamTools::SDK_OnUnload()
 {
-	for ( int i = 0; i < g_SteamClients.Count(); ++i )
-	{
-		g_SteamClients.Remove(i);
-	}
-
 	if (g_ThinkHookID != 0)
 	{
 		SH_REMOVE_HOOK_ID(g_ThinkHookID);
@@ -726,14 +713,11 @@ static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
 	if (!g_pSteamGameServer)
 		return 0;
 
-	for ( int i = 0; i < g_SteamClients.Count(); ++i )
-	{
-		if (g_SteamClients.Element(i) == params[1])
-		{
-			return g_pSteamGameServer->RequestUserGroupStatus(g_SteamClients.Element(i).GetSteamID(), CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));
-		}
-	}
-	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
+	const CSteamID *pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
+	if (!pSteamID)
+		return pContext->ThrowNativeError("No Steam ID found for client %d", params[1]);
+
+	return g_pSteamGameServer->RequestUserGroupStatus(*pSteamID, CSteamID(params[2], k_EUniversePublic, k_EAccountTypeClan));
 }
 
 static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params)
@@ -784,6 +768,7 @@ static cell_t IsConnected(IPluginContext *pContext, const cell_t *params)
 
 	return g_pSteamGameServer->LoggedOn();
 	*/
+
 	return g_SteamServersConnected;
 }
 
@@ -877,15 +862,12 @@ static cell_t RequestStats(IPluginContext *pContext, const cell_t *params)
 	if (!g_pSteamGameServerStats)
 		return 0;
 
-	for ( int i = 0; i < g_SteamClients.Count(); ++i )
-	{
-		if (g_SteamClients.Element(i) == params[1])
-		{
-			g_RequestUserStatsSteamAPICalls.AddToTail(g_pSteamGameServerStats->RequestUserStats(g_SteamClients.Element(i).GetSteamID()));
-			return 0;
-		}
-	}
-	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
+	const CSteamID *pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
+	if (!pSteamID)
+		return pContext->ThrowNativeError("No Steam ID found for client %d", params[1]);
+
+	g_RequestUserStatsSteamAPICalls.AddToTail(g_pSteamGameServerStats->RequestUserStats(*pSteamID));
+	return 0;
 }
 
 static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params)
@@ -893,23 +875,20 @@ static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params)
 	if (!g_pSteamGameServerStats)
 		return 0;
 
-	for ( int i = 0; i < g_SteamClients.Count(); ++i )
+	const CSteamID *pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
+	if (!pSteamID)
+		return pContext->ThrowNativeError("No Steam ID found for client %d", params[1]);
+
+	char *strStatName;
+	pContext->LocalToString(params[2], &strStatName);
+
+	int32 data;
+	if (g_pSteamGameServerStats->GetUserStat(*pSteamID, strStatName, &data))
 	{
-		if (g_SteamClients.Element(i) == params[1])
-		{
-			int32 data;
-			char *strStatName;
-			pContext->LocalToString(params[2], &strStatName);
-			if (g_pSteamGameServerStats->GetUserStat(g_SteamClients.Element(i).GetSteamID(), strStatName, &data))
-			{
-				return data;
-			} else {
-				return pContext->ThrowNativeError("Failed to get stat %s for client %d", strStatName, params[1]);
-			}
-			break;
-		}
+		return data;
+	} else {
+		return pContext->ThrowNativeError("Failed to get stat %s for client %d", strStatName, params[1]);
 	}
-	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
 }
 
 static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params)
@@ -917,23 +896,20 @@ static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params)
 	if (!g_pSteamGameServerStats)
 		return 0;
 
-	for ( int i = 0; i < g_SteamClients.Count(); ++i )
+	const CSteamID *pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
+	if (!pSteamID)
+		return pContext->ThrowNativeError("No Steam ID found for client %d", params[1]);
+
+	char *strStatName;
+	pContext->LocalToString(params[2], &strStatName);
+
+	float data;
+	if (g_pSteamGameServerStats->GetUserStat(*pSteamID, strStatName, &data))
 	{
-		if (g_SteamClients.Element(i) == params[1])
-		{
-			float data;
-			char *strStatName;
-			pContext->LocalToString(params[2], &strStatName);
-			if (g_pSteamGameServerStats->GetUserStat(g_SteamClients.Element(i).GetSteamID(), strStatName, &data))
-			{
-				return sp_ftoc(data);
-			} else {
-				return pContext->ThrowNativeError("Failed to get stat %s for client %d", strStatName, params[1]);
-			}
-			break;
-		}
+		return sp_ftoc(data);
+	} else {
+		return pContext->ThrowNativeError("Failed to get stat %s for client %d", strStatName, params[1]);
 	}
-	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
 }
 
 static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params)
@@ -941,91 +917,47 @@ static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params)
 	if (!g_pSteamGameServerStats)
 		return 0;
 
-	for ( int i = 0; i < g_SteamClients.Count(); ++i )
+	const CSteamID *pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
+	if (!pSteamID)
+		return pContext->ThrowNativeError("No Steam ID found for client %d", params[1]);
+
+	char *strAchName;
+	pContext->LocalToString(params[2], &strAchName);
+
+	bool bAchieved;
+	if (g_pSteamGameServerStats->GetUserAchievement(*pSteamID, strAchName, &bAchieved))
 	{
-		if (g_SteamClients.Element(i) == params[1])
-		{
-			bool bAchieved;
-			char *strAchName;
-			pContext->LocalToString(params[2], &strAchName);
-			if (g_pSteamGameServerStats->GetUserAchievement(g_SteamClients.Element(i).GetSteamID(), strAchName, &bAchieved))
-			{
-				return bAchieved;
-			} else {
-				return pContext->ThrowNativeError("Failed to get achievement %s for client %d", strAchName, params[1]);
-			}
-			break;
-		}
+		return bAchieved;
+	} else {
+		return pContext->ThrowNativeError("Failed to get achievement %s for client %d", strAchName, params[1]);
 	}
-	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
 }
 
 static cell_t GetNumClientSubscriptions(IPluginContext *pContext, const cell_t *params)
 {
-	for ( int i = 0; i < g_SteamClients.Count(); ++i )
-	{
-		if (g_SteamClients.Element(i) == params[1])
-		{
-			if (g_SteamClients.Element(i).GetSubIDs() != NULL)
-			{
-				uint32 *subIDs = g_SteamClients.Element(i).GetSubIDs();
-				return sizeof(*subIDs) / sizeof(uint32);
-			} else {
-				return pContext->ThrowNativeError("No subscriptions were found for client %d", params[1]);
-			}
-			break;
-		}
-	}
-	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
+	const CSteamID *pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
+	if (!pSteamID)
+		return pContext->ThrowNativeError("No Steam ID found for client %d", params[1]);
+
+	SubIDMap::IndexType_t index = g_subIDs.Find(pSteamID->GetAccountID());
+	if (!g_subIDs.IsValidIndex(index))
+		return pContext->ThrowNativeError("No subscriptions were found for client %d", params[1]);
+
+	return g_subIDs.Element(index).Count();
 }
 
 static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *params)
 {
-	for ( int i = 0; i < g_SteamClients.Count(); ++i )
-	{
-		if (g_SteamClients.Element(i) == params[1])
-		{
-			if (g_SteamClients.Element(i).GetSubIDs() != NULL)
-			{
-				uint32 index = params[2];
-				if (index >= sizeof(*g_SteamClients.Element(i).GetSubIDs()) / sizeof(uint32))
-				{
-					return pContext->ThrowNativeError("Subscription index %u is out of bounds for client %d", index, params[1]);
-				} else {
-					uint32 *subIDs = g_SteamClients.Element(i).GetSubIDs();
-					return subIDs[index];
-				}
-			} else {
-				return pContext->ThrowNativeError("No subscriptions were found for client %d", params[1]);
-			}
-			break;
-		}
-	}
-	return pContext->ThrowNativeError("No g_SteamClients entry found for client %d", params[1]);
-}
+	const CSteamID *pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
+	if (!pSteamID)
+		return pContext->ThrowNativeError("No Steam ID found for client %d", params[1]);
 
-CSteamID SteamIDToCSteamID(const char *steamID)
-{
-	char *buf = new char[64];
-	strcpy(buf, steamID);
+	SubIDMap::IndexType_t index = g_subIDs.Find(pSteamID->GetAccountID());
+	if (!g_subIDs.IsValidIndex(index))
+		return pContext->ThrowNativeError("No subscriptions were found for client %d", params[1]);
 
-	int iServer = 0;
-	int iAuthID = 0;
+	if(!g_subIDs.Element(index).IsValidIndex(params[2]))
+		return pContext->ThrowNativeError("Subscription index %u is out of bounds for client %d", index, params[1]);
 
-	char *szTmp = strtok(buf, ":");
-	while((szTmp = strtok(NULL, ":")))
-	{
-		char *szTmp2 = strtok(NULL, ":");
-		if(szTmp2)
-		{
-			iServer = atoi(szTmp);
-			iAuthID = atoi(szTmp2);
-		}
-	}
-
-	uint64 i64friendID = (uint64)iAuthID * 2;
-	uint64 constConvert = 76561197960265728ULL;
-	i64friendID += constConvert + iServer;
-
-	return CSteamID(i64friendID);
+	return g_subIDs.Element(index).Element(params[2]);
 }

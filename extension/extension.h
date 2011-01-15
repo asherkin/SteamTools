@@ -41,70 +41,6 @@
 #define INTERFACEOSW_H
 #include <Steamworks.h>
 
-class CSteamClient
-{
-public:
-	CSteamClient(int PlayerIndex, CSteamID SteamID)
-	{
-		this->PlayerIndex = PlayerIndex;
-		this->SteamID = SteamID;
-		this->subIDs = NULL;
-	}
-
-	CSteamClient(CSteamID SteamID, uint32 subIDs[])
-	{
-		this->PlayerIndex = 0;
-		this->SteamID = SteamID;
-
-		if (subIDs != NULL)
-		{
-			this->subIDs = (uint32 *)malloc(sizeof(*subIDs));
-			memcpy(this->subIDs, subIDs, sizeof(*subIDs));
-		} else {
-			subIDs = NULL;
-		}
-	}
-
-	bool operator==(const CSteamClient &other) const {
-		return this->SteamID == other.SteamID;
-	}
-
-	bool operator!=(const CSteamClient &other) const {
-		return !(*this == other);
-	}
-
-	bool operator==(const int &other) const {
-		return this->PlayerIndex == other;
-	}
-
-	bool operator!=(const int &other) const {
-		return !(*this == other);
-	}
-
-	bool operator==(const CSteamID &other) const {
-		return this->SteamID == other;
-	}
-
-	bool operator!=(const CSteamID &other) const {
-		return !(*this == other);
-	}
-
-public:
-	int GetIndex() const { return PlayerIndex; }
-	CSteamID GetSteamID() const { return SteamID; }
-	uint32 *GetSubIDs() { return subIDs; }
-
-	void SetIndex(int PlayerIndex)
-	{
-		this->PlayerIndex = PlayerIndex;
-	}
-
-protected:
-	int PlayerIndex;
-	CSteamID SteamID;
-	uint32 *subIDs;
-};
-
 /**
  * @brief Sample implementation of the SDK Extension.
  * Note: Uncomment one of the pre-defined virtual functions in order to use it.
@@ -182,7 +118,6 @@ public: //IConCommandBaseAccessor
 	bool RegisterConCommandBase(ConCommandBase *pCommand);
 
 public: //IClientListener
-	void OnClientAuthorized(int client, const char *authstring);
 	void OnClientDisconnecting(int client);
 
 public: //IPluginsListener
@@ -217,7 +152,6 @@ static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params);
 static cell_t GetNumClientSubscriptions(IPluginContext *pContext, const cell_t *params);
 static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *params);
 
-CSteamID SteamIDToCSteamID(const char *steamID);
 bool CheckInterfaces();
 bool LoadSteamclient(ISteamClient009 **pSteamClient, int method = 0);
 
