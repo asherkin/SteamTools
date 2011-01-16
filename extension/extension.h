@@ -48,7 +48,6 @@
 class SteamTools: 
 	public SDKExtension, 
 	public IConCommandBaseAccessor, 
-	public IClientListener, 
 	public IPluginsListener
 {
 public:
@@ -117,9 +116,6 @@ public:
 public: //IConCommandBaseAccessor
 	bool RegisterConCommandBase(ConCommandBase *pCommand);
 
-public: //IClientListener
-	void OnClientDisconnecting(int client);
-
 public: //IPluginsListener
 	void OnPluginLoaded(IPlugin *plugin);
 };
@@ -127,6 +123,7 @@ public: //IPluginsListener
 void Hook_Think(bool finalTick);
 bool Hook_WasRestartRequested();
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser);
+void Hook_SendUserDisconnect(CSteamID steamIDUser);
 
 static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params);
 static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params);

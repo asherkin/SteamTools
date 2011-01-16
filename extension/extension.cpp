@@ -54,6 +54,7 @@ SMEXT_LINK(&g_SteamTools);
 SH_DECL_HOOK1_void(IServerGameDLL, Think, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK0(ISteamMasterServerUpdater001, WasRestartRequested, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK4(ISteamGameServer010, SendUserConnectAndAuthenticate, SH_NOATTRIB, 0, bool, uint32, const void *, uint32, CSteamID *);
+SH_DECL_HOOK1_void(ISteamGameServer010, SendUserDisconnect, SH_NOATTRIB, 0, CSteamID);
 
 ConVar SteamToolsVersion("steamtools_version", SMEXT_CONF_VERSION, FCVAR_NOTIFY|FCVAR_REPLICATED, SMEXT_CONF_DESCRIPTION);
 
@@ -93,6 +94,7 @@ FreeLastCallbackFn FreeLastCallback;
 int g_ThinkHookID = 0;
 int g_WasRestartRequestedHookID = 0;
 int g_SendUserConnectAndAuthenticateHookID = 0;
+int g_SendUserDisconnectHookID = 0;
 
 bool g_SteamServersConnected = false;
 bool g_SteamLoadFailed = false;
@@ -355,7 +357,8 @@ void Hook_Think(bool finalTick)
 
 		g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater001, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), false);
 		g_SendUserConnectAndAuthenticateHookID = SH_ADD_HOOK(ISteamGameServer010, SendUserConnectAndAuthenticate, g_pSteamGameServer, SH_STATIC(Hook_SendUserConnectAndAuthenticate), true);
-		
+		g_SendUserDisconnectHookID = SH_ADD_HOOK(ISteamGameServer010, SendUserDisconnect, g_pSteamGameServer, SH_STATIC(Hook_SendUserDisconnect), true);
+
 		g_SMAPI->ConPrintf("[STEAMTOOLS] Loading complete.\n");
 
 		cell_t dummy;
@@ -520,7 +523,6 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	g_pShareSys->AddNatives(myself, g_ExtensionNatives);
 	g_pShareSys->RegisterLibrary(myself, "SteamTools");
 
-	playerhelpers->AddClientListener(this);
 	plsys->AddPluginsListener(this);
 
 	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 4, NULL, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
@@ -541,17 +543,11 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	return true;
 }
 
-void SteamTools::OnClientDisconnecting(int client)
+void Hook_SendUserDisconnect(CSteamID steamIDUser)
 {
-	edict_t *edict = playerhelpers->GetGamePlayer(client)->GetEdict();
-	if (!edict)
-		return g_pSM->LogError(myself, "NULL edict for client %d (OnClientDisconnecting)", client);
+	g_subIDs.Remove(steamIDUser.GetAccountID());
 
-	const CSteamID *pSteamID = engine->GetClientSteamID(edict);
-	if (!pSteamID)
-		return g_pSM->LogError(myself, "No Steam ID found for client %d (OnClientDisconnecting)", client);
-
-	g_subIDs.Remove(pSteamID->GetAccountID());
+	RETURN_META(MRES_IGNORED);
 }
 
 void SteamTools::OnPluginLoaded(IPlugin *plugin)
@@ -673,6 +669,11 @@ bool SteamTools::RegisterConCommandBase(ConCommandBase *pCommand)
 
 void SteamTools::SDK_OnUnload()
 {
+	if (g_SendUserDisconnectHookID != 0)
+	{
+		SH_REMOVE_HOOK_ID(g_SendUserDisconnectHookID);
+		g_SendUserDisconnectHookID = 0;
+	}
 	if (g_ThinkHookID != 0)
 	{
 		SH_REMOVE_HOOK_ID(g_ThinkHookID);
@@ -698,7 +699,6 @@ void SteamTools::SDK_OnUnload()
 	g_pForwards->ReleaseForward(g_pForwardSteamServersConnected);
 	g_pForwards->ReleaseForward(g_pForwardSteamServersDisconnected);
 
-	playerhelpers->RemoveClientListener(this);
 	plsys->RemovePluginsListener(this);
 }
 
