@@ -147,7 +147,7 @@ void Hook_Think(bool finalTick)
 				{
 					GSClientGroupStatus_t *GroupStatus = (GSClientGroupStatus_t *)callbackMsg.m_pubParam;
 
-					for ( int i = 0; i < playerhelpers->GetMaxClients(); ++i )
+					for ( int i = 1; i <= playerhelpers->GetNumPlayers(); ++i )
 					{
 						IGamePlayer *player = playerhelpers->GetGamePlayer(i);
 						if (!player)
@@ -253,7 +253,7 @@ void Hook_Think(bool finalTick)
 						} else {
 							if (StatsReceived.m_eResult == k_EResultOK)
 							{
-								for ( int i = 0; i < playerhelpers->GetMaxClients(); ++i )
+								for ( int i = 1; i <= playerhelpers->GetNumPlayers(); ++i )
 								{
 									IGamePlayer *player = playerhelpers->GetGamePlayer(i);
 									if (!player)
@@ -293,7 +293,7 @@ void Hook_Think(bool finalTick)
 				{
 					GSStatsUnloaded_t *StatsUnloaded = (GSStatsUnloaded_t *)callbackMsg.m_pubParam;
 
-					for ( int i = 0; i < playerhelpers->GetMaxClients(); ++i )
+					for ( int i = 1; i <= playerhelpers->GetNumPlayers(); ++i )
 					{
 						IGamePlayer *player = playerhelpers->GetGamePlayer(i);
 						if (!player)
@@ -543,7 +543,11 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 void SteamTools::OnClientDisconnecting(int client)
 {
-	const CSteamID *pSteamID = engine->GetClientSteamID(playerhelpers->GetGamePlayer(client)->GetEdict());
+	edict_t *edict = playerhelpers->GetGamePlayer(client)->GetEdict();
+	if (!edict)
+		return g_pSM->LogError(myself, "NULL edict for client %d (OnClientDisconnecting)", client);
+
+	const CSteamID *pSteamID = engine->GetClientSteamID(edict);
 	if (!pSteamID)
 		return g_pSM->LogError(myself, "No Steam ID found for client %d (OnClientDisconnecting)", client);
 
