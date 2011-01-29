@@ -155,9 +155,11 @@ static cell_t GetCSteamIDFromRenderedID(IPluginContext *pContext, const cell_t *
 static cell_t SetCustomSteamID(IPluginContext *pContext, const cell_t *params);
 static cell_t GetCustomSteamID(IPluginContext *pContext, const cell_t *params);
 
+static cell_t GroupIDToCSteamID(IPluginContext *pContext, const cell_t *params);
+static cell_t CSteamIDToGroupID(IPluginContext *pContext, const cell_t *params);
+
 bool CheckInterfaces();
 bool LoadSteamclient(ISteamClient009 **pSteamClient, int method = 0);
 
 CSteamID atocsteamid(const char *pRenderedID);
-
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

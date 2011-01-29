@@ -157,6 +157,10 @@ native bool:Steam_SetCustomSteamID(String:renderedID[]);
 native bool:Steam_GetCustomSteamID(String:renderedID[], maxlength);
 
 
+native Steam_GroupIDToCSteamID(groupID, String:steamID[], maxlength);
+native Steam_CSteamIDToGroupID(String:steamID[]);
+
+
 public Extension:__ext_SteamTools = 
 {
 	name = "SteamTools",
