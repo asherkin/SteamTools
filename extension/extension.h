@@ -149,7 +149,15 @@ static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params);
 static cell_t GetNumClientSubscriptions(IPluginContext *pContext, const cell_t *params);
 static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *params);
 
+static cell_t GetCSteamIDForClient(IPluginContext *pContext, const cell_t *params);
+static cell_t GetCSteamIDFromRenderedID(IPluginContext *pContext, const cell_t *params);
+
+static cell_t SetCustomSteamID(IPluginContext *pContext, const cell_t *params);
+static cell_t GetCustomSteamID(IPluginContext *pContext, const cell_t *params);
+
 bool CheckInterfaces();
 bool LoadSteamclient(ISteamClient009 **pSteamClient, int method = 0);
+
+CSteamID atocsteamid(const char *pRenderedID);
 
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

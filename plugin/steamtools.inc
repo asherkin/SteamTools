@@ -148,6 +148,15 @@ native bool:Steam_IsAchieved(client, String:achievementName[]);
 native Steam_GetNumClientSubscriptions(client);
 native Steam_GetClientSubscription(client, index);
 
+
+native Steam_GetCSteamIDForClient(client, String:steamID[], maxlength);
+native Steam_GetCSteamIDFromRenderedID(String:renderedID[], String:steamID[], maxlength);
+
+
+native bool:Steam_SetCustomSteamID(String:renderedID[]);
+native bool:Steam_GetCustomSteamID(String:renderedID[], maxlength);
+
+
 public Extension:__ext_SteamTools = 
 {
 	name = "SteamTools",
