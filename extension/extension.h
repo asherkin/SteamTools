@@ -37,10 +37,6 @@
 
 #include "smsdk_ext.h"
 
-#define NO_CSTEAMID_STL
-#define INTERFACEOSW_H
-#include <Steamworks.h>
-
 /**
  * @brief Sample implementation of the SDK Extension.
  * Note: Uncomment one of the pre-defined virtual functions in order to use it.
@@ -121,6 +117,8 @@ public: //IPluginsListener
 };
 
 void Hook_Think(bool finalTick);
+void Hook_GameServerSteamAPIActivated(void);
+
 bool Hook_WasRestartRequested();
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser);
 void Hook_SendUserDisconnect(CSteamID steamIDUser);
@@ -159,7 +157,7 @@ static cell_t GroupIDToCSteamID(IPluginContext *pContext, const cell_t *params);
 static cell_t CSteamIDToGroupID(IPluginContext *pContext, const cell_t *params);
 
 bool CheckInterfaces();
-bool LoadSteamclient(ISteamClient009 **pSteamClient, int method = 0);
+bool LoadSteamclient(ISteamClient **pSteamClient, int method = 0);
 
 CSteamID atocsteamid(const char *pRenderedID);
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

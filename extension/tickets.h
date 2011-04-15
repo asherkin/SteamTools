@@ -101,6 +101,7 @@ public:
 	unsigned char signature[128];
 };
 
+//TODO: make this use GCMsgReader
 class AuthBlob_t 
 {
 public:
