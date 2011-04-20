@@ -649,12 +649,21 @@ bool Hook_WasRestartRequested()
 	RETURN_META_VALUE(MRES_SUPERCEDE, (cellResults < Pl_Handled)?bWasRestartRequested:false);
 }
 
+ConVar ParseBadTickets("steamtools_parse_bad_tickets", "1", FCVAR_NONE, "", true, 0.0, true, 1.0);
+
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser)
 {
 	bool ret = META_RESULT_ORIG_RET(bool);
 
+	AuthBlob_t *authblob;
+	if (!ret && !ParseBadTickets.GetBool())
+	{
+		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u was denied by Steam, but SteamTools has been configured not to gather aditional info.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
+		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
+	}
+
 	bool error = false;
-	AuthBlob_t authblob = AuthBlob_t(pvAuthBlob, cubAuthBlobSize, &error);
+	authblob = new AuthBlob_t(pvAuthBlob, cubAuthBlobSize, &error);
 
 	if (error) // An error was encountered trying to parse the ticket.
 	{
@@ -666,41 +675,48 @@ bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBl
 		} else {
 			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u sent a non-steam auth blob.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
 		}
+
+		delete authblob;
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
 	if (!ret)
 	{
-		if (!authblob.ownership)
+		if (!authblob->ownership)
 		{
-			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) isn't using Steam.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, (authblob.section)?(authblob.section->steamid.Render()):("NO STEAMID"));
-		} else if (!authblob.section) {
-			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) isn't using Steam.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, (authblob->section)?(authblob->section->steamid.Render()):("NO STEAMID"));
+		} else if (!authblob->section) {
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob->ownership->ticket->steamid.Render());
 		} else {
-			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) was denied by Steam for an unknown reason. (Maybe an expired or stolen ticket?).", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) was denied by Steam for an unknown reason. (Maybe an expired or stolen ticket?).", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob->ownership->ticket->steamid.Render());
 		}
 
+		delete authblob;
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
-	if (!authblob.section && authblob.ownership)
+	if (!authblob->section && authblob->ownership)
 	{
-		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode but their ticket hasn't expired yet.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
+		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode but their ticket hasn't expired yet.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob->ownership->ticket->steamid.Render());
+		delete authblob;
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
-	} else if (!authblob.section || !authblob.ownership) {
-		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to missing sections in ticket. (authblob.length = %u)", authblob.length);
+	} else if (!authblob->section || !authblob->ownership) {
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to missing sections in ticket. (authblob->length = %u)", authblob->length);
+		delete authblob;
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
-	if (authblob.ownership->ticket->version != 4)
+	if (authblob->ownership->ticket->version != 4)
 	{
-		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected ticket version. (ticketVersion = %u)", authblob.ownership->ticket->version);
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected ticket version. (ticketVersion = %u)", authblob->ownership->ticket->version);
+		delete authblob;
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
 	SubIDMap::IndexType_t index = g_subIDs.Insert(pSteamIDUser->GetAccountID());
-	g_subIDs.Element(index).CopyArray(authblob.ownership->ticket->licenses, authblob.ownership->ticket->numlicenses);
+	g_subIDs.Element(index).CopyArray(authblob->ownership->ticket->licenses, authblob->ownership->ticket->numlicenses);
 
+	delete authblob;
 	RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 }
 
