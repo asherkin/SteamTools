@@ -224,7 +224,7 @@ void Hook_Think(bool finalTick)
 				GSClientGroupStatus_t *GroupStatus = (GSClientGroupStatus_t *)callbackMsg.m_pubParam;
 
 				int i;
-				for (i = 1; i <= playerhelpers->GetNumPlayers(); ++i)
+				for (i = 1; i <= playerhelpers->GetMaxClients(); ++i)
 				{
 					IGamePlayer *player = playerhelpers->GetGamePlayer(i);
 					if (!player)
@@ -244,7 +244,7 @@ void Hook_Think(bool finalTick)
 						break;
 				}
 
-				if (i > playerhelpers->GetNumPlayers())
+				if (i > playerhelpers->GetMaxClients())
 				{
 					i = -1;
 					g_CustomSteamID = GroupStatus->m_SteamIDUser;
@@ -340,7 +340,7 @@ void Hook_Think(bool finalTick)
 						if (StatsReceived.m_eResult == k_EResultOK)
 						{
 							int i;
-							for (i = 1; i <= playerhelpers->GetNumPlayers(); ++i)
+							for (i = 1; i <= playerhelpers->GetMaxClients(); ++i)
 							{
 								IGamePlayer *player = playerhelpers->GetGamePlayer(i);
 								if (!player)
@@ -360,7 +360,7 @@ void Hook_Think(bool finalTick)
 									break;
 							}
 
-							if (i > playerhelpers->GetNumPlayers())
+							if (i > playerhelpers->GetMaxClients())
 							{
 								i = -1;
 								g_CustomSteamID = StatsReceived.m_steamIDUser;
@@ -394,7 +394,7 @@ void Hook_Think(bool finalTick)
 				GSStatsUnloaded_t *StatsUnloaded = (GSStatsUnloaded_t *)callbackMsg.m_pubParam;
 
 				int i;
-				for (i = 1; i <= playerhelpers->GetNumPlayers(); ++i)
+				for (i = 1; i <= playerhelpers->GetMaxClients(); ++i)
 				{
 					IGamePlayer *player = playerhelpers->GetGamePlayer(i);
 					if (!player)
@@ -414,7 +414,7 @@ void Hook_Think(bool finalTick)
 						break;
 				}
 
-				if (i > playerhelpers->GetNumPlayers())
+				if (i > playerhelpers->GetMaxClients())
 				{
 					i = -1;
 					g_CustomSteamID = StatsUnloaded->m_steamIDUser;
