@@ -272,7 +272,7 @@ void Hook_Think(bool finalTick)
 					g_pForwardGameplayStats->PushCell(GameplayStats->m_unTotalMinutesPlayed);
 					g_pForwardGameplayStats->Execute(NULL);
 				} else {
-					g_pSM->LogError(myself, "Server Gameplay Stats received with an unexpected eResult. (eResult = %d)", GameplayStats->m_eResult);
+					g_pSM->LogError(myself, "Server Gameplay Stats received with an unexpected eResult. (eResult = %d) (If the server just started and the eResult is 2, this is expected.)", GameplayStats->m_eResult);
 				}
 				FreeLastCallback(g_GameServerSteamPipe());
 				break;
