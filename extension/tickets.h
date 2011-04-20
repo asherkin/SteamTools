@@ -4,6 +4,8 @@
 #define NO_CSTEAMID_STL
 #include "SteamTypes.h"
 
+#include "blob.h"
+
 class Section_t
 {
 public:
@@ -11,7 +13,7 @@ public:
 		uint32 length,
 		unsigned char unknown[8], 
 		CSteamID steamid, 
-		time_t generation)
+		uint32 generation)
 	{
 		this->length = length;
 		memcpy(this->unknown, unknown, 8);
@@ -23,7 +25,7 @@ public:
 	uint32 length;
 	unsigned char unknown[8];
 	CSteamID steamid;
-	time_t generation;
+	uint32 generation;
 };
 
 class OwnershipTicket_t
@@ -37,8 +39,8 @@ public:
 		uint32 externalip, 
 		uint32 internalip, 
 		uint32 ownershipflags, 
-		time_t generation, 
-		time_t expiration, 
+		uint32 generation, 
+		uint32 expiration, 
 		uint16 numlicenses, 
 		uint32 licenses[], 
 		uint32 filler)
@@ -70,8 +72,8 @@ public:
 	uint32 externalip;
 	uint32 internalip;
 	uint32 ownershipflags;
-	time_t generation;
-	time_t expiration;
+	uint32 generation;
+	uint32 expiration;
 	uint16 numlicenses;
 	uint32 *licenses;
 	uint32 filler;
@@ -101,29 +103,46 @@ public:
 	unsigned char signature[128];
 };
 
-//TODO: make this use GCMsgReader
+#define AUTHBLOB_READ(type, value) \
+	if (!authBlob.Read<type>(&value)) \
+	{ \
+		if (bError) \
+			*bError = true; \
+		return; \
+	}
+
 class AuthBlob_t 
 {
 public:
-	AuthBlob_t(const void *pvAuthBlob)
+	AuthBlob_t(const void *pvAuthBlob, size_t cubAuthBlob, bool *bError = NULL)
 	{
-		uint32 pos = 0;
+		CBlob authBlob(pvAuthBlob, cubAuthBlob);
 
-		uint32 sectionlength = *(uint32 *)((char *)pvAuthBlob + pos);
-		pos += sizeof(uint32);
+		uint32 sectionlength;
+		AUTHBLOB_READ(uint32, sectionlength);
 
 		if (sectionlength != 20)
 		{
-			pos += sectionlength;
+			if ((authBlob.GetPosition() + sectionlength) > cubAuthBlob)
+			{
+				if (bError)
+					*bError = true;
+				return;
+			}
+			authBlob.AdvancePosition(sectionlength);
 			section = NULL;
 		} else {
 			unsigned char unknown[8];
-			memcpy(&unknown, ((char *)pvAuthBlob + pos), 8);
-			pos += 8;
-			CSteamID steamid = *(CSteamID *)((char *)pvAuthBlob + pos);
-			pos += sizeof(CSteamID);
-			time_t generation = *(uint32 *)((char *)pvAuthBlob + pos);
-			pos += sizeof(uint32);
+			if (!authBlob.Read(unknown, 8))
+			{
+				if (bError)
+					*bError = true;
+				return;
+			}
+			uint64 steamid;
+			AUTHBLOB_READ(uint64, steamid);
+			uint32 generation;
+			AUTHBLOB_READ(uint32, generation);
 
 			section = new Section_t(
 				sectionlength,
@@ -133,48 +152,57 @@ public:
 				);
 		}
 
-		uint32 section2length = *(uint32 *)((char *)pvAuthBlob + pos);
-		pos += sizeof(uint32);
+		uint32 section2length;
+		AUTHBLOB_READ(uint32, section2length);
 
 		if (section2length == 0)
 		{
-			pos += section2length;
+			if ((authBlob.GetPosition() + sectionlength) > cubAuthBlob)
+			{
+				if (bError)
+					*bError = true;
+				return;
+			}
+			authBlob.AdvancePosition(sectionlength);
 			ownership = NULL;
 		} else {
-			uint32 length = *(uint32 *)((char *)pvAuthBlob + pos);
-			pos += sizeof(uint32);
-			uint32 version = *(uint32 *)((char *)pvAuthBlob + pos);
-			pos += sizeof(uint32);
-			CSteamID steamid = *(CSteamID *)((char *)pvAuthBlob + pos);
-			pos += sizeof(CSteamID);
-			AppId_t appid = *(AppId_t *)((char *)pvAuthBlob + pos);
-			pos += sizeof(AppId_t);
-			uint32 externalip = *(uint32 *)((char *)pvAuthBlob + pos);
-			pos += sizeof(uint32);
-			uint32 internalip = *(uint32 *)((char *)pvAuthBlob + pos);
-			pos += sizeof(uint32);
-			uint32 ownershipflags = *(uint32 *)((char *)pvAuthBlob + pos);
-			pos += sizeof(uint32);
-			time_t generation = *(uint32 *)((char *)pvAuthBlob + pos);
-			pos += sizeof(uint32);
-			time_t expiration = *(uint32 *)((char *)pvAuthBlob + pos);
-			pos += sizeof(uint32);
-			uint16 numlicenses = *(uint16 *)((char *)pvAuthBlob + pos);
-			pos += sizeof(uint16);
+			uint32 length;
+			AUTHBLOB_READ(uint32, length);
+			uint32 version;
+			AUTHBLOB_READ(uint32, version);
+			uint64 steamid;
+			AUTHBLOB_READ(uint64, steamid);
+			AppId_t appid;
+			AUTHBLOB_READ(AppId_t, appid);
+			uint32 externalip;
+			AUTHBLOB_READ(uint32, externalip);
+			uint32 internalip;
+			AUTHBLOB_READ(uint32, internalip);
+			uint32 ownershipflags;
+			AUTHBLOB_READ(uint32, ownershipflags);
+			uint32 generation;
+			AUTHBLOB_READ(uint32, generation);
+			uint32 expiration;
+			AUTHBLOB_READ(uint32, expiration);
+			uint16 numlicenses;
+			AUTHBLOB_READ(uint16, numlicenses);
 
 			uint32 *licenses = new uint32[numlicenses];
 			for (int i = 0; i < numlicenses; i++)
 			{
-				licenses[i] = *(uint32 *)((char *)pvAuthBlob + pos);
-				pos += sizeof(uint32);
+				AUTHBLOB_READ(uint32, licenses[i]);
 			}
 
-			uint32 filler = *(uint32 *)((char *)pvAuthBlob + pos);
-			pos += sizeof(uint32);
+			uint32 filler;
+			AUTHBLOB_READ(uint32, filler);
 
 			unsigned char signature[128];
-			memcpy(&signature, ((char *)pvAuthBlob + pos), 128);
-			pos += 128;
+			if (!authBlob.Read(signature, 128))
+			{
+				if (bError)
+					*bError = true;
+				return;
+			}
 
 			ownership = new OwnershipSection_t(
 				section2length,
@@ -196,10 +224,10 @@ public:
 				);
 		}
 
-		this->length = pos;
+		this->length = authBlob.GetPosition();
 
-		this->blob = new unsigned char[pos];
-		memcpy(this->blob, pvAuthBlob, pos);
+		this->blob = new unsigned char[authBlob.GetPosition()];
+		memcpy(this->blob, pvAuthBlob, authBlob.GetPosition());
 	}
 
 	~AuthBlob_t()

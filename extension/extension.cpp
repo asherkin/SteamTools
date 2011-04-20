@@ -654,7 +654,22 @@ bool Hook_WasRestartRequested()
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser)
 {
 	bool ret = META_RESULT_ORIG_RET(bool);
-	AuthBlob_t authblob = AuthBlob_t(pvAuthBlob);
+
+	bool error = false;
+	AuthBlob_t authblob = AuthBlob_t(pvAuthBlob, cubAuthBlobSize, &error);
+
+	if (error) // An error was encountered trying to parse the ticket.
+	{
+		CBlob authBlob(pvAuthBlob, cubAuthBlobSize);
+		uint32 revVersion;
+		if (authBlob.Read<uint32>(&revVersion) && revVersion == 83)
+		{
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u sent a non-steam auth blob. (RevEmu ticket detected)", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
+		} else {
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u sent a non-steam auth blob.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
+		}
+		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
+	}
 
 	if (!ret)
 	{
