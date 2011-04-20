@@ -46,6 +46,16 @@
 #error Unsupported SDK Version
 #endif
 
+#ifdef WIN32 
+#ifdef _MSC_VER 
+#define atoui64(str) _strtoui64(str, 0, 10) 
+#else 
+#define atoui64(str) strtoul(str, 0, 10) 
+#endif 
+#else 
+#define atoui64(str) strtoull(str, 0, 10) 
+#endif 
+
 #define NO_CSTEAMID_STL
 #define INTERFACEOSW_H
 #include <Steamworks.h>
@@ -1176,7 +1186,7 @@ static cell_t CSteamIDToRenderedID(IPluginContext *pContext, const cell_t *param
 	char *pSteamID;
 	pContext->LocalToString(params[1], &pSteamID);
 
-	CSteamID steamID(_strtoui64(pSteamID, NULL, 10));
+	CSteamID steamID(atoui64(pSteamID));
 
 	if (steamID.IsValid())
 	{
@@ -1233,7 +1243,7 @@ static cell_t CSteamIDToGroupID(IPluginContext *pContext, const cell_t *params)
 	char *pSteamID;
 	pContext->LocalToString(params[1], &pSteamID);
 
-	CSteamID steamID(_strtoui64(pSteamID, NULL, 10));
+	CSteamID steamID(atoui64(pSteamID));
 
 	if (steamID.IsValid())
 	{
