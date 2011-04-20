@@ -144,8 +144,6 @@ IForward *g_pForwardClientUnloadedStats = NULL;
 
 IForward *g_pForwardLoaded = NULL;
 
-int g_nPlayers = 0;
-
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
 	{ "Steam_RequestGroupStatus",			RequestGroupStatus },
@@ -245,21 +243,27 @@ void Hook_Think(bool finalTick)
 				GSClientGroupStatus_t *GroupStatus = (GSClientGroupStatus_t *)callbackMsg.m_pubParam;
 
 				int i;
-				for (i = 1; i <= g_nPlayers; ++i)
+				for (i = 1; i <= playerhelpers->GetNumPlayers(); ++i)
 				{
 					IGamePlayer *player = playerhelpers->GetGamePlayer(i);
 					if (!player)
 						continue;
 
+					if (player->IsFakeClient())
+						continue;
+
+					if (!player->IsAuthorized())
+						continue;
+
 					edict_t *playerEdict = player->GetEdict();
-					if (!playerEdict)
+					if (!playerEdict || playerEdict->IsFree())
 						continue;
 
 					if (*engine->GetClientSteamID(playerEdict) == GroupStatus->m_SteamIDUser)
 						break;
 				}
 
-				if (i > g_nPlayers)
+				if (i > playerhelpers->GetNumPlayers())
 				{
 					i = -1;
 					g_CustomSteamID = GroupStatus->m_SteamIDUser;
@@ -355,21 +359,27 @@ void Hook_Think(bool finalTick)
 						if (StatsReceived.m_eResult == k_EResultOK)
 						{
 							int i;
-							for (i = 1; i <= g_nPlayers; ++i)
+							for (i = 1; i <= playerhelpers->GetNumPlayers(); ++i)
 							{
 								IGamePlayer *player = playerhelpers->GetGamePlayer(i);
 								if (!player)
 									continue;
 
+								if (player->IsFakeClient())
+									continue;
+
+								if (!player->IsAuthorized())
+									continue;
+
 								edict_t *playerEdict = player->GetEdict();
-								if (!playerEdict)
+								if (!playerEdict || playerEdict->IsFree())
 									continue;
 
 								if (*engine->GetClientSteamID(playerEdict) == StatsReceived.m_steamIDUser)
 									break;
 							}
 
-							if (i > g_nPlayers)
+							if (i > playerhelpers->GetNumPlayers())
 							{
 								i = -1;
 								g_CustomSteamID = StatsReceived.m_steamIDUser;
@@ -403,21 +413,27 @@ void Hook_Think(bool finalTick)
 				GSStatsUnloaded_t *StatsUnloaded = (GSStatsUnloaded_t *)callbackMsg.m_pubParam;
 
 				int i;
-				for (i = 1; i <= g_nPlayers; ++i)
+				for (i = 1; i <= playerhelpers->GetNumPlayers(); ++i)
 				{
 					IGamePlayer *player = playerhelpers->GetGamePlayer(i);
 					if (!player)
 						continue;
 
+					if (player->IsFakeClient())
+						continue;
+
+					if (!player->IsAuthorized())
+						continue;
+
 					edict_t *playerEdict = player->GetEdict();
-					if (!playerEdict)
+					if (!playerEdict || playerEdict->IsFree())
 						continue;
 
 					if (*engine->GetClientSteamID(playerEdict) == StatsUnloaded->m_steamIDUser)
 						break;
 				}
 
-				if (i > g_nPlayers)
+				if (i > playerhelpers->GetNumPlayers())
 				{
 					i = -1;
 					g_CustomSteamID = StatsUnloaded->m_steamIDUser;
@@ -600,9 +616,10 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 void Hook_SendUserDisconnect(CSteamID steamIDUser)
 {
-	g_subIDs.Remove(steamIDUser.GetAccountID());
-
-	g_nPlayers--;
+	if (steamIDUser.BIndividualAccount() && steamIDUser.GetUnAccountInstance() == 1)
+	{
+		g_subIDs.Remove(steamIDUser.GetAccountID());
+	}
 
 	RETURN_META(MRES_IGNORED);
 }
@@ -702,8 +719,6 @@ bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBl
 
 	SubIDMap::IndexType_t index = g_subIDs.Insert(pSteamIDUser->GetAccountID());
 	g_subIDs.Element(index).CopyArray(authblob.ownership->ticket->licenses, authblob.ownership->ticket->numlicenses);
-
-	g_nPlayers++;
 
 	RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 }
