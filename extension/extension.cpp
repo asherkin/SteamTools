@@ -166,10 +166,12 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_GetNumClientSubscriptions",	GetNumClientSubscriptions },
 	{ "Steam_GetClientSubscription",		GetClientSubscription },
 	{ "Steam_GetCSteamIDForClient",			GetCSteamIDForClient },
-	{ "Steam_GetCSteamIDFromRenderedID",	GetCSteamIDFromRenderedID },
+	{ "Steam_RenderedIDToCSteamID",			RenderedIDToCSteamID },
+	{ "Steam_CSteamIDToRenderedID"			CSteamIDToRenderedID },
 	{ "Steam_SetCustomSteamID",				SetCustomSteamID },
 	{ "Steam_GetCustomSteamID",				GetCustomSteamID },
 	{ "Steam_GroupIDToCSteamID",			GroupIDToCSteamID },
+	{ "Steam_CSteamIDToGroupID",			CSteamIDToGroupID },
 	{ NULL,									NULL }
 };
 
@@ -1181,7 +1183,7 @@ static cell_t GetCSteamIDForClient(IPluginContext *pContext, const cell_t *param
 	return numbytes;
 }
 
-static cell_t GetCSteamIDFromRenderedID(IPluginContext *pContext, const cell_t *params)
+static cell_t RenderedIDToCSteamID(IPluginContext *pContext, const cell_t *params)
 {
 	char *pRenderedSteamID;
 	pContext->LocalToString(params[1], &pRenderedSteamID);
@@ -1197,6 +1199,25 @@ static cell_t GetCSteamIDFromRenderedID(IPluginContext *pContext, const cell_t *
 		return numbytes;
 	} else {
 		return pContext->ThrowNativeError("%s is not a valid SteamID", pRenderedSteamID);
+	}
+}
+
+static cell_t CSteamIDToRenderedID(IPluginContext *pContext, const cell_t *params)
+{
+	char *pSteamID;
+	pContext->LocalToString(params[1], &pSteamID);
+
+	CSteamID steamID(_strtoui64(pSteamID, NULL, 10));
+
+	if (steamID.IsValid())
+	{
+		char *pRenderedSteamID = new char[params[3]];
+		int numbytes = g_pSM->Format(pRenderedSteamID, params[3], "%s", steamID.Render());
+
+		pContext->StringToLocal(params[2], numbytes, pRenderedSteamID);
+		return numbytes;
+	} else {
+		return pContext->ThrowNativeError("%s is not a valid SteamID", pSteamID);
 	}
 }
 
@@ -1236,4 +1257,19 @@ static cell_t GroupIDToCSteamID(IPluginContext *pContext, const cell_t *params)
 
 	pContext->StringToLocal(params[2], numbytes, steamIDString);
 	return numbytes;
+}
+
+static cell_t CSteamIDToGroupID(IPluginContext *pContext, const cell_t *params)
+{
+	char *pSteamID;
+	pContext->LocalToString(params[1], &pSteamID);
+
+	CSteamID steamID(_strtoui64(pSteamID, NULL, 10));
+
+	if (steamID.IsValid())
+	{
+		return steamID.GetAccountID();
+	} else {
+		return pContext->ThrowNativeError("%s is not a valid SteamID", pSteamID);
+	}
 }
