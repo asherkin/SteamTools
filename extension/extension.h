@@ -123,41 +123,11 @@ bool Hook_WasRestartRequested();
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser);
 void Hook_SendUserDisconnect(CSteamID steamIDUser);
 
-static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params);
-static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params);
-static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *params);
-static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params);
-static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params);
-static cell_t IsConnected(IPluginContext *pContext, const cell_t *params);
-static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params);
-
-static cell_t SetKeyValue(IPluginContext *pContext, const cell_t *params);
-static cell_t ClearAllKeyValues(IPluginContext *pContext, const cell_t *params);
-
-static cell_t AddMasterServer(IPluginContext *pContext, const cell_t *params);
-static cell_t RemoveMasterServer(IPluginContext *pContext, const cell_t *params);
-static cell_t GetNumMasterServers(IPluginContext *pContext, const cell_t *params);
-static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *params);
-
-static cell_t RequestStats(IPluginContext *pContext, const cell_t *params);
-static cell_t GetStatInt(IPluginContext *pContext, const cell_t *params);
-static cell_t GetStatFloat(IPluginContext *pContext, const cell_t *params);
-static cell_t IsAchieved(IPluginContext *pContext, const cell_t *params);
-
-static cell_t GetNumClientSubscriptions(IPluginContext *pContext, const cell_t *params);
-static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *params);
-
-static cell_t GetCSteamIDForClient(IPluginContext *pContext, const cell_t *params);
-static cell_t GetCSteamIDFromRenderedID(IPluginContext *pContext, const cell_t *params);
-
-static cell_t SetCustomSteamID(IPluginContext *pContext, const cell_t *params);
-static cell_t GetCustomSteamID(IPluginContext *pContext, const cell_t *params);
-
-static cell_t GroupIDToCSteamID(IPluginContext *pContext, const cell_t *params);
-static cell_t CSteamIDToGroupID(IPluginContext *pContext, const cell_t *params);
-
 bool CheckInterfaces();
 bool LoadSteamclient(ISteamClient **pSteamClient, int method = 0);
 
 CSteamID atocsteamid(const char *pRenderedID);
+
+extern sp_nativeinfo_t g_ExtensionNatives[];
+
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

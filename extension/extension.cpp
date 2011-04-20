@@ -144,37 +144,6 @@ IForward *g_pForwardClientUnloadedStats = NULL;
 
 IForward *g_pForwardLoaded = NULL;
 
-sp_nativeinfo_t g_ExtensionNatives[] =
-{
-	{ "Steam_RequestGroupStatus",			RequestGroupStatus },
-	{ "Steam_RequestGameplayStats",			RequestGameplayStats },
-	{ "Steam_RequestServerReputation",		RequestServerReputation },
-	{ "Steam_ForceHeartbeat",				ForceHeartbeat },
-	{ "Steam_IsVACEnabled",					IsVACEnabled },
-	{ "Steam_IsConnected",					IsConnected },
-	{ "Steam_GetPublicIP",					GetPublicIP },
-	{ "Steam_SetRule",						SetKeyValue },
-	{ "Steam_ClearRules",					ClearAllKeyValues },
-	{ "Steam_AddMasterServer",				AddMasterServer },
-	{ "Steam_RemoveMasterServer",			RemoveMasterServer },
-	{ "Steam_GetNumMasterServers",			GetNumMasterServers },
-	{ "Steam_GetMasterServerAddress",		GetMasterServerAddress },
-	{ "Steam_RequestStats",					RequestStats },
-	{ "Steam_GetStat",						GetStatInt },
-	{ "Steam_GetStatFloat",					GetStatFloat },
-	{ "Steam_IsAchieved",					IsAchieved },
-	{ "Steam_GetNumClientSubscriptions",	GetNumClientSubscriptions },
-	{ "Steam_GetClientSubscription",		GetClientSubscription },
-	{ "Steam_GetCSteamIDForClient",			GetCSteamIDForClient },
-	{ "Steam_RenderedIDToCSteamID",			RenderedIDToCSteamID },
-	{ "Steam_CSteamIDToRenderedID"			CSteamIDToRenderedID },
-	{ "Steam_SetCustomSteamID",				SetCustomSteamID },
-	{ "Steam_GetCustomSteamID",				GetCustomSteamID },
-	{ "Steam_GroupIDToCSteamID",			GroupIDToCSteamID },
-	{ "Steam_CSteamIDToGroupID",			CSteamIDToGroupID },
-	{ NULL,									NULL }
-};
-
 void Hook_GameServerSteamAPIActivated(void)
 {
 #if defined _WIN32	
@@ -1273,3 +1242,34 @@ static cell_t CSteamIDToGroupID(IPluginContext *pContext, const cell_t *params)
 		return pContext->ThrowNativeError("%s is not a valid SteamID", pSteamID);
 	}
 }
+
+sp_nativeinfo_t g_ExtensionNatives[] =
+{
+	{ "Steam_RequestGroupStatus",			RequestGroupStatus },
+	{ "Steam_RequestGameplayStats",			RequestGameplayStats },
+	{ "Steam_RequestServerReputation",		RequestServerReputation },
+	{ "Steam_ForceHeartbeat",				ForceHeartbeat },
+	{ "Steam_IsVACEnabled",					IsVACEnabled },
+	{ "Steam_IsConnected",					IsConnected },
+	{ "Steam_GetPublicIP",					GetPublicIP },
+	{ "Steam_SetRule",						SetKeyValue },
+	{ "Steam_ClearRules",					ClearAllKeyValues },
+	{ "Steam_AddMasterServer",				AddMasterServer },
+	{ "Steam_RemoveMasterServer",			RemoveMasterServer },
+	{ "Steam_GetNumMasterServers",			GetNumMasterServers },
+	{ "Steam_GetMasterServerAddress",		GetMasterServerAddress },
+	{ "Steam_RequestStats",					RequestStats },
+	{ "Steam_GetStat",						GetStatInt },
+	{ "Steam_GetStatFloat",					GetStatFloat },
+	{ "Steam_IsAchieved",					IsAchieved },
+	{ "Steam_GetNumClientSubscriptions",	GetNumClientSubscriptions },
+	{ "Steam_GetClientSubscription",		GetClientSubscription },
+	{ "Steam_GetCSteamIDForClient",			GetCSteamIDForClient },
+	{ "Steam_RenderedIDToCSteamID",			RenderedIDToCSteamID },
+	{ "Steam_CSteamIDToRenderedID",			CSteamIDToRenderedID },
+	{ "Steam_SetCustomSteamID",				SetCustomSteamID },
+	{ "Steam_GetCustomSteamID",				GetCustomSteamID },
+	{ "Steam_GroupIDToCSteamID",			GroupIDToCSteamID },
+	{ "Steam_CSteamIDToGroupID",			CSteamIDToGroupID },
+	{ NULL,									NULL }
+};
