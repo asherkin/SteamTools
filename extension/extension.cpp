@@ -99,7 +99,7 @@ ConVar SteamToolsVersion("steamtools_version", SMEXT_CONF_VERSION, FCVAR_NOTIFY|
 
 IServerGameDLL *g_pServerGameDLL = NULL;
 ICvar *g_pLocalCVar = NULL;
-IFileSystem *g_pFileSystem = NULL;
+IFileSystem *g_pFullFileSystem = NULL;
 
 ISteamGameServer *g_pSteamGameServer = NULL;
 ISteamMasterServerUpdater *g_pSteamMasterServerUpdater = NULL;
@@ -157,9 +157,9 @@ IForward *g_pForwardLoaded = NULL;
 void Hook_GameServerSteamAPIActivated(void)
 {
 #if defined _WIN32	
-	CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/steam_api.dll", "MOD", false);
+	CSysModule *pModSteamApi = g_pFullFileSystem->LoadModule("../bin/steam_api.dll", "MOD", false);
 #elif defined _LINUX
-	CSysModule *pModSteamApi = g_pFileSystem->LoadModule("../bin/libsteam_api.so", "MOD", false);
+	CSysModule *pModSteamApi = g_pFullFileSystem->LoadModule("../bin/libsteam_api.so", "MOD", false);
 #endif
 
 	if ( !pModSteamApi )
@@ -494,9 +494,9 @@ bool LoadSteamclient(ISteamClient **pSteamClient, int method)
 	case 0:
 		{
 #if defined _WIN32
-			CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../bin/steamclient.dll", "MOD", false);
+			CSysModule *pModSteamClient = g_pFullFileSystem->LoadModule("../bin/steamclient.dll", "MOD", false);
 #elif defined _LINUX
-			CSysModule *pModSteamClient = g_pFileSystem->LoadModule("../bin/steamclient.so", "MOD", false);
+			CSysModule *pModSteamClient = g_pFullFileSystem->LoadModule("../bin/steamclient.so", "MOD", false);
 #endif
 			if (!pModSteamClient)
 			{
@@ -525,7 +525,7 @@ bool LoadSteamclient(ISteamClient **pSteamClient, int method)
 			RegQueryValueExA(hRegKey, "InstallPath", NULL, NULL, (BYTE*)pchSteamDir, &dwLength);
 			RegCloseKey(hRegKey);
 			strcat(pchSteamDir, "/steamclient.dll");
-			CSysModule *pModSteamClient = g_pFileSystem->LoadModule(pchSteamDir, "MOD", false);
+			CSysModule *pModSteamClient = g_pFullFileSystem->LoadModule(pchSteamDir, "MOD", false);
 			if (!pModSteamClient)
 			{
 				g_pSM->LogError(myself, "Unable to get steamclient handle.");
@@ -649,21 +649,66 @@ bool Hook_WasRestartRequested()
 	RETURN_META_VALUE(MRES_SUPERCEDE, (cellResults < Pl_Handled)?bWasRestartRequested:false);
 }
 
+CON_COMMAND(st_ticket, "")
+{
+	FileHandle_t ticketFile = g_pFullFileSystem->Open("ticket.bin", "rb", "MOD");
+	if (!ticketFile)
+	{
+		META_CONPRINT("Unable to open ticket.bin for reading\n");
+	}
+
+	int ticketSize = g_pFullFileSystem->Size(ticketFile);
+
+	void *ticketBuffer = malloc(ticketSize);
+	if (!ticketBuffer)
+	{
+		META_CONPRINT("Unable to allocate memory to read ticket.bin\n");
+	}
+
+	if (!g_pFullFileSystem->Read(ticketBuffer, ticketSize, ticketFile))
+	{
+		META_CONPRINT("Unable to read ticket.bin\n");
+	}
+
+	g_pFullFileSystem->Close(ticketFile);
+
+	bool error = false;
+	AuthBlob_t authblob(ticketBuffer, ticketSize, &error);
+
+	if (error) // An error was encountered trying to parse the ticket.
+	{
+		CBlob authBlob(ticketBuffer, ticketSize);
+		uint32 revVersion;
+		if (authBlob.Read<uint32>(&revVersion) && revVersion == 83)
+		{
+			META_CONPRINT("Error detected parsing ticket. (RevEmu)\n");
+		} else {
+			META_CONPRINT("Error detected parsing ticket. (unknown)\n");
+		}
+
+		return;
+	}
+	
+	META_CONPRINT("No error detected while parsing ticket.\n");
+
+	free(ticketBuffer);
+}
+
 ConVar ParseBadTickets("steamtools_parse_bad_tickets", "1", FCVAR_NONE, "", true, 0.0, true, 1.0);
+ConVar DumpBadTickets("steamtools_dump_unknown_tickets", "0", FCVAR_NONE, "", true, 0.0, true, 1.0);
 
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser)
 {
 	bool ret = META_RESULT_ORIG_RET(bool);
 
-	AuthBlob_t *authblob;
 	if (!ret && !ParseBadTickets.GetBool())
 	{
-		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u was denied by Steam, but SteamTools has been configured not to gather aditional info.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
+		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u was denied by Steam, but SteamTools has been configured not to gather additional info.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
 	bool error = false;
-	authblob = new AuthBlob_t(pvAuthBlob, cubAuthBlobSize, &error);
+	AuthBlob_t authblob(pvAuthBlob, cubAuthBlobSize, &error);
 
 	if (error) // An error was encountered trying to parse the ticket.
 	{
@@ -674,49 +719,61 @@ bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBl
 			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u sent a non-steam auth blob. (RevEmu ticket detected)", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
 		} else {
 			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u sent a non-steam auth blob.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
+
+			if (DumpBadTickets.GetBool())
+			{
+				char fileName[64];
+				g_pSM->Format(fileName, 64, "ticket_%u_%u_%u_%u_%u_%u.bin", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, cubAuthBlobSize, time(NULL));
+				
+				FileHandle_t ticketFile = g_pFullFileSystem->Open(fileName, "wb", "MOD");
+				if (!ticketFile)
+				{
+					g_pSM->LogError(myself, "Unable to open %s for writing.", fileName);
+				}
+
+				g_pFullFileSystem->Write(pvAuthBlob, cubAuthBlobSize, ticketFile);
+
+				g_pFullFileSystem->Close(ticketFile);
+
+				g_pSM->LogMessage(myself, "Wrote unknown ticket to %s, please send this file to asherkin@gmail.com", fileName);
+			}
 		}
 
-		delete authblob;
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
 	if (!ret)
 	{
-		if (!authblob->ownership)
+		if (!authblob.ownership)
 		{
-			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) isn't using Steam.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, (authblob->section)?(authblob->section->steamid.Render()):("NO STEAMID"));
-		} else if (!authblob->section) {
-			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob->ownership->ticket->steamid.Render());
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) isn't using Steam.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, (authblob.section)?(authblob.section->steamid.Render()):("NO STEAMID"));
+		} else if (!authblob.section) {
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
 		} else {
-			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) was denied by Steam for an unknown reason. (Maybe an expired or stolen ticket?).", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob->ownership->ticket->steamid.Render());
+			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) was denied by Steam for an unknown reason. (Maybe an expired or stolen ticket?).", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
 		}
 
-		delete authblob;
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
-	if (!authblob->section && authblob->ownership)
+	if (!authblob.section && authblob.ownership)
 	{
-		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode but their ticket hasn't expired yet.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob->ownership->ticket->steamid.Render());
-		delete authblob;
+		g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u (%s) is in offline mode but their ticket hasn't expired yet.", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF, authblob.ownership->ticket->steamid.Render());
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
-	} else if (!authblob->section || !authblob->ownership) {
-		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to missing sections in ticket. (authblob->length = %u)", authblob->length);
-		delete authblob;
+	} else if (!authblob.section || !authblob.ownership) {
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to missing sections in ticket. (authblob.length = %u)", authblob.length);
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
-	if (authblob->ownership->ticket->version != 4)
+	if (authblob.ownership->ticket->version != 4)
 	{
-		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected ticket version. (ticketVersion = %u)", authblob->ownership->ticket->version);
-		delete authblob;
+		g_pSM->LogError(myself, "SendUserConnectAndAuthenticate: Aborting due to unexpected ticket version. (ticketVersion = %u)", authblob.ownership->ticket->version);
 		RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 	}
 
 	SubIDMap::IndexType_t index = g_subIDs.Insert(pSteamIDUser->GetAccountID());
-	g_subIDs.Element(index).CopyArray(authblob->ownership->ticket->licenses, authblob->ownership->ticket->numlicenses);
+	g_subIDs.Element(index).CopyArray(authblob.ownership->ticket->licenses, authblob.ownership->ticket->numlicenses);
 
-	delete authblob;
 	RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 }
 
@@ -724,7 +781,7 @@ bool SteamTools::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bo
 {
 	GET_V_IFACE_CURRENT(GetServerFactory, g_pServerGameDLL, IServerGameDLL, INTERFACEVERSION_SERVERGAMEDLL);
 	GET_V_IFACE_CURRENT(GetEngineFactory, g_pLocalCVar, ICvar, CVAR_INTERFACE_VERSION);
-	GET_V_IFACE_CURRENT(GetFileSystemFactory, g_pFileSystem, IFileSystem, FILESYSTEM_INTERFACE_VERSION);
+	GET_V_IFACE_CURRENT(GetFileSystemFactory, g_pFullFileSystem, IFileSystem, FILESYSTEM_INTERFACE_VERSION);
 
 	if (!g_pServerGameDLL)
 	{
@@ -736,7 +793,7 @@ bool SteamTools::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bo
 		snprintf(error, maxlen, "Could not find interface %s", CVAR_INTERFACE_VERSION);
 		return false;
 	}
-	if (!g_pFileSystem)
+	if (!g_pFullFileSystem)
 	{
 		snprintf(error, maxlen, "Could not find interface %s", FILESYSTEM_INTERFACE_VERSION);
 		return false;
