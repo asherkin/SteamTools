@@ -695,7 +695,7 @@ CON_COMMAND(st_ticket, "")
 }
 
 ConVar ParseBadTickets("steamtools_parse_bad_tickets", "1", FCVAR_NONE, "", true, 0.0, true, 1.0);
-ConVar DumpBadTickets("steamtools_dump_unknown_tickets", "0", FCVAR_NONE, "", true, 0.0, true, 1.0);
+ConVar DumpBadTickets("steamtools_dump_unknown_tickets", "1", FCVAR_NONE, "", true, 0.0, true, 1.0);
 
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser)
 {
@@ -729,13 +729,13 @@ bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBl
 				if (!ticketFile)
 				{
 					g_pSM->LogError(myself, "Unable to open %s for writing.", fileName);
+				} else {
+					g_pFullFileSystem->Write(pvAuthBlob, cubAuthBlobSize, ticketFile);
+
+					g_pFullFileSystem->Close(ticketFile);
+
+					g_pSM->LogMessage(myself, "Wrote unknown ticket to %s, please send this file to asherkin@gmail.com", fileName);
 				}
-
-				g_pFullFileSystem->Write(pvAuthBlob, cubAuthBlobSize, ticketFile);
-
-				g_pFullFileSystem->Close(ticketFile);
-
-				g_pSM->LogMessage(myself, "Wrote unknown ticket to %s, please send this file to asherkin@gmail.com", fileName);
 			}
 		}
 
