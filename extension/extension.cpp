@@ -75,10 +75,15 @@ class ISteamUtils: public ISteamUtils005 {};
 class ISteamGameServerStats: public ISteamGameServerStats001 {};
 #define STEAMGAMESERVERSTATS_INTERFACE_VERSION STEAMGAMESERVERSTATS_INTERFACE_VERSION_001
 
+class ISteamUser: public ISteamUser014 {};
+#define STEAMUSER_INTERFACE_VERSION STEAMUSER_INTERFACE_VERSION_014
+
 #include "extension.h"
 #include "filesystem.h"
 #include "tickets.h"
 #include "utlmap.h"
+
+#include "ISteamVoice.h"
 
 /**
  * @file extension.cpp
@@ -105,6 +110,7 @@ ISteamGameServer *g_pSteamGameServer = NULL;
 ISteamMasterServerUpdater *g_pSteamMasterServerUpdater = NULL;
 ISteamUtils *g_pSteamUtils = NULL;
 ISteamGameServerStats *g_pSteamGameServerStats = NULL;
+ISteamUser *g_pSteamUser = NULL; // Used for ISteamVoice
 
 CSteamID g_CustomSteamID = k_steamIDNil;
 SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
@@ -154,6 +160,17 @@ IForward *g_pForwardClientUnloadedStats = NULL;
 
 IForward *g_pForwardLoaded = NULL;
 
+class CSteamVoice: public ISteamVoice
+{
+	ISteamVoice::EVoiceResult DecompressVoice(const void *pCompressed, uint32 cbCompressed, void *pDestBuffer, uint32 cbDestBufferSize, uint32 *nBytesWritten)
+	{
+		if (!g_pSteamUser)
+			return ISteamVoice::k_EVoiceResultNotInitialized;
+
+		return (ISteamVoice::EVoiceResult)g_pSteamUser->DecompressVoice(pCompressed, cbCompressed, pDestBuffer, cbDestBufferSize, nBytesWritten);
+	}
+} g_SteamVoiceInterface;
+
 void Hook_GameServerSteamAPIActivated(void)
 {
 #if defined _WIN32	
@@ -182,6 +199,7 @@ void Hook_GameServerSteamAPIActivated(void)
 	g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION);
 	g_pSteamUtils = (ISteamUtils *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMUTILS_INTERFACE_VERSION);
 	g_pSteamGameServerStats = (ISteamGameServerStats *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamUser(), STEAMGAMESERVERSTATS_INTERFACE_VERSION);
+	g_pSteamUser = (ISteamUser *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMUSER_INTERFACE_VERSION);
 
 	if (!CheckInterfaces())
 		return;
@@ -576,6 +594,7 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	g_pShareSys->RegisterLibrary(myself, "SteamTools");
 
 	plsys->AddPluginsListener(this);
+	g_SMAPI->AddListener(g_PLAPI, this);
 
 	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 4, NULL, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardGameplayStats = g_pForwards->CreateForward("Steam_GameplayStats", ET_Ignore, 3, NULL, Param_Cell, Param_Cell, Param_Cell);
@@ -636,6 +655,20 @@ void SteamTools::OnPluginLoaded(IPlugin *plugin)
 	{
 		steamConnectionStateCallback->CallFunction(NULL, 0, &result);
 	}
+}
+
+void *SteamTools::OnMetamodQuery(const char *iface, int *ret)
+{
+	if (strcmp(iface, STEAMVOICE_INTERFACE) == 0)
+	{
+		if (ret)
+			*ret = IFACE_OK;
+		return static_cast<void *>(&g_SteamVoiceInterface);
+	}
+	if (ret)
+		*ret = IFACE_FAILED;
+
+	return NULL;
 }
 
 bool Hook_WasRestartRequested()

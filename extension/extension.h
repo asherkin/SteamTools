@@ -44,7 +44,8 @@
 class SteamTools: 
 	public SDKExtension, 
 	public IConCommandBaseAccessor, 
-	public IPluginsListener
+	public IPluginsListener,
+	public IMetamodListener
 {
 public:
 	/**
@@ -114,6 +115,9 @@ public: //IConCommandBaseAccessor
 
 public: //IPluginsListener
 	void OnPluginLoaded(IPlugin *plugin);
+
+public: //IMetamodListener
+	void *OnMetamodQuery(const char *iface, int *ret);
 };
 
 void Hook_Think(bool finalTick);
