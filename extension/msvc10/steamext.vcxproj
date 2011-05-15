@@ -120,7 +120,6 @@
   <ItemGroup>
     <ClInclude Include="..\blob.h" />
     <ClInclude Include="..\extension.h" />
-    <ClInclude Include="..\ISteamVoice.h" />
     <ClInclude Include="..\sdk\smsdk_config.h" />
     <ClInclude Include="..\sdk\smsdk_ext.h" />
     <ClInclude Include="..\tickets.h" />

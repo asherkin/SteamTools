@@ -40,9 +40,6 @@
     <ClInclude Include="..\blob.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ISteamVoice.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\plugin\steamtools.inc">
