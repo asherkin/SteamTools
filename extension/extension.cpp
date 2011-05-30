@@ -54,7 +54,9 @@
 #endif 
 #else 
 #define atoui64(str) strtoull(str, 0, 10) 
-#endif 
+#endif
+
+#include "extension.h"
 
 #define NO_CSTEAMID_STL
 #define INTERFACEOSW_H
@@ -75,7 +77,6 @@ class ISteamUtils: public ISteamUtils005 {};
 class ISteamGameServerStats: public ISteamGameServerStats001 {};
 #define STEAMGAMESERVERSTATS_INTERFACE_VERSION STEAMGAMESERVERSTATS_INTERFACE_VERSION_001
 
-#include "extension.h"
 #include "filesystem.h"
 #include "tickets.h"
 #include "utlmap.h"
@@ -194,7 +195,7 @@ void Hook_GameServerSteamAPIActivated(void)
 
 	g_pForwardLoaded->Execute(NULL);
 
-	g_SteamServersConnected = g_pSteamGameServer->LoggedOn();
+	g_SteamServersConnected = g_pSteamGameServer->BLoggedOn();
 
 	if (g_SteamServersConnected)
 	{
@@ -967,7 +968,7 @@ static cell_t IsVACEnabled(IPluginContext *pContext, const cell_t *params)
 	if (!g_pSteamGameServer)
 		return 0;
 
-	return g_pSteamGameServer->Secure();
+	return g_pSteamGameServer->BSecure();
 }
 
 static cell_t IsConnected(IPluginContext *pContext, const cell_t *params)
