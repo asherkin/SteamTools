@@ -663,11 +663,17 @@ CON_COMMAND(st_ticket, "")
 	if (!ticketBuffer)
 	{
 		META_CONPRINT("Unable to allocate memory to read ticket.bin\n");
+
+		free(ticketBuffer);
+		return;
 	}
 
 	if (!g_pFullFileSystem->Read(ticketBuffer, ticketSize, ticketFile))
 	{
 		META_CONPRINT("Unable to read ticket.bin\n");
+
+		free(ticketBuffer);
+		return;
 	}
 
 	g_pFullFileSystem->Close(ticketFile);
@@ -678,14 +684,15 @@ CON_COMMAND(st_ticket, "")
 	if (error) // An error was encountered trying to parse the ticket.
 	{
 		CBlob authBlob(ticketBuffer, ticketSize);
-		uint32 revVersion;
-		if (authBlob.Read<uint32>(&revVersion) && revVersion == 83)
+		uint8 revVersion;
+		if (authBlob.Read<uint8>(&revVersion) && revVersion == 83)
 		{
 			META_CONPRINT("Error detected parsing ticket. (RevEmu)\n");
 		} else {
 			META_CONPRINT("Error detected parsing ticket. (unknown)\n");
 		}
 
+		free(ticketBuffer);
 		return;
 	}
 	
@@ -713,8 +720,8 @@ bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBl
 	if (error) // An error was encountered trying to parse the ticket.
 	{
 		CBlob authBlob(pvAuthBlob, cubAuthBlobSize);
-		uint32 revVersion;
-		if (authBlob.Read<uint32>(&revVersion) && revVersion == 83)
+		uint8 revVersion;
+		if (authBlob.Read<uint8>(&revVersion) && revVersion == 83)
 		{
 			g_pSM->LogMessage(myself, "Client connecting from %u.%u.%u.%u sent a non-steam auth blob. (RevEmu ticket detected)", (unIPClient) & 0xFF, (unIPClient >> 8) & 0xFF, (unIPClient >> 16) & 0xFF, (unIPClient >> 24) & 0xFF);
 		} else {

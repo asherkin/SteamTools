@@ -59,10 +59,12 @@ public:
 		this->filler = filler;
 	}
 
+	/*
 	~OwnershipTicket_t()
 	{
 		delete this->licenses;
 	}
+	*/
 
 	//private:
 	uint32 length;
@@ -92,10 +94,12 @@ public:
 		memcpy(this->signature, signature, 128);
 	}
 
+	/*
 	~OwnershipSection_t()
 	{
 		delete ticket;
 	}
+	*/
 
 	//private:
 	uint32 length;
@@ -157,13 +161,15 @@ public:
 
 		if (section2length == 0)
 		{
-			if ((authBlob.GetPosition() + sectionlength) > cubAuthBlob)
+			/*
+			if ((authBlob.GetPosition() + section2length) > cubAuthBlob)
 			{
 				if (bError)
 					*bError = true;
 				return;
 			}
-			authBlob.AdvancePosition(sectionlength);
+			authBlob.AdvancePosition(section2length);
+			*/
 			ownership = NULL;
 		} else {
 			uint32 length;
@@ -225,23 +231,20 @@ public:
 		}
 
 		this->length = authBlob.GetPosition();
-
-		this->blob = new unsigned char[authBlob.GetPosition()];
-		memcpy(this->blob, pvAuthBlob, authBlob.GetPosition());
 	}
 
+	/*
 	~AuthBlob_t()
 	{
 		delete section;
 		delete ownership;
-		delete blob;
 	}
+	*/
 
 	//private:
 	uint32 length;
 	Section_t *section;
 	OwnershipSection_t *ownership;
-	unsigned char *blob;
 };
 
 #endif // tickets_h__
