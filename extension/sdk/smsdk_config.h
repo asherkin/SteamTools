@@ -38,7 +38,7 @@
 /* Basic information exposed publicly */
 #define SMEXT_CONF_NAME			"SteamTools"
 #define SMEXT_CONF_DESCRIPTION	"SteamWorks for SourceMod."
-#define SMEXT_CONF_VERSION		"0.7.0"
+#define SMEXT_CONF_VERSION		"0.7.1"
 #define SMEXT_CONF_AUTHOR		"Asher Baker (asherkin)"
 #define SMEXT_CONF_URL			"http://limetech.org/"
 #define SMEXT_CONF_LOGTAG		"STEAMTOOLS"
