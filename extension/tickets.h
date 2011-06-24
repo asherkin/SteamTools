@@ -76,9 +76,7 @@ public:
 		uint16 numlicenses, 
 		uint32 licenses[], 
 		uint16 numdlcs, 
-		uint32 dlcs[], 
-		uint16 numsubs, 
-		uint32 subs[], 
+		uint32 dlcs[],
 		uint16 filler)
 	{
 		this->length = length;
@@ -94,8 +92,6 @@ public:
 		this->licenses = licenses;
 		this->numdlcs = numdlcs;
 		this->dlcs = dlcs;
-		this->numsubs = numsubs;
-		this->subs = subs;
 		this->filler = filler;
 	}
 
@@ -120,8 +116,6 @@ public:
 	uint32 *licenses;
 	uint16 numdlcs;
 	uint32 *dlcs;
-	uint16 numsubs;
-	uint32 *subs;
 	uint32 filler;
 };
 
@@ -287,14 +281,14 @@ public:
 			for (int i = 0; i < numdlcs; i++)
 			{
 				AUTHBLOB_READ(uint32, dlcs[i]);
-			}
 
-			uint16 numsubs;
-			AUTHBLOB_READ(uint16, numsubs);
-			uint32 *subs = new uint32[numsubs];
-			for (int i = 0; i < numsubs; i++)
-			{
-				AUTHBLOB_READ(uint32, subs[i]);
+				uint16 numsubs;
+				AUTHBLOB_READ(uint16, numsubs);
+				uint32 *subs = new uint32[numsubs];
+				for (int i = 0; i < numsubs; i++)
+				{
+					AUTHBLOB_READ(uint32, subs[i]);
+				}
 			}
 
 			uint16 filler;
@@ -324,8 +318,6 @@ public:
 				licenses,
 				numdlcs,
 				dlcs,
-				numsubs,
-				subs,
 				filler
 				),
 				signature

@@ -151,14 +151,33 @@ native Steam_GetClientSubscription(client, index);
 native Steam_GetNumClientDLCs(client);
 native Steam_GetClientDLC(client, index);
 
-enum DLCLicenseStatus
+stock bool:Steam_CheckClientSubscription(client, subid)
 {
-	HasLicense = 0,				// User has a license for specified app
-	DoesNotHaveLicense = 1,		// User does not have a license for the specified app
-	NoAuth = 2,					// User has not been authenticated
+	new subCount = Steam_GetNumClientSubscriptions(client);
+	for (new x = 0; x < subCount; x++)
+	{
+		if (Steam_GetClientSubscription(client, x) == subid)
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
-native DLCLicenseStatus:Steam_CheckUserHasDLC(client, appid);
+stock bool:Steam_CheckClientDLC(client, appid)
+{
+	new subCount = Steam_GetNumClientDLCs(client);
+	for (new x = 0; x < subCount; x++)
+	{
+		if (Steam_GetClientDLC(client, x) == appid)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
 
 native Steam_GetCSteamIDForClient(client, String:steamID[], maxlength);
 

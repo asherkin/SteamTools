@@ -1297,24 +1297,6 @@ static cell_t GetClientDLC(IPluginContext *pContext, const cell_t *params)
 	return g_DLCs.Element(index).Element(params[2]);
 }
 
-static cell_t CheckUserHasDLC(IPluginContext *pContext, const cell_t *params)
-{
-	if (!g_pSteamGameServer)
-		return k_EUserHasLicenseResultNoAuth;
-
-	const CSteamID *pSteamID;
-	if(params[1] > -1)
-	{
-		pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
-	} else {
-		return pContext->ThrowNativeError("Custom SteamID can not be used for this function", params[1]);
-	}
-	if (!pSteamID)
-		return pContext->ThrowNativeError("No SteamID found for client %d", params[1]);
-
-	return g_pSteamGameServer->UserHasLicenseForApp(*pSteamID, params[2]);
-}
-
 static cell_t GetCSteamIDForClient(IPluginContext *pContext, const cell_t *params)
 {
 	const CSteamID *pSteamID;
@@ -1451,7 +1433,6 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_GetClientSubscription",		GetClientSubscription },
 	{ "Steam_GetNumClientDLCs",				GetNumClientDLCs },
 	{ "Steam_GetClientDLC",					GetClientDLC },
-	{ "Steam_CheckUserHasDLC",				CheckUserHasDLC },
 	{ "Steam_GetCSteamIDForClient",			GetCSteamIDForClient },
 	{ "Steam_RenderedIDToCSteamID",			RenderedIDToCSteamID },
 	{ "Steam_CSteamIDToRenderedID",			CSteamIDToRenderedID },
