@@ -37,7 +37,24 @@
 
 #include "smsdk_ext.h"
 
-class ISteamClient;
+#define NO_CSTEAMID_STL
+#define INTERFACEOSW_H
+#include <Steamworks.h>
+
+class ISteamClient: public ISteamClient009 {};
+#define STEAMCLIENT_INTERFACE_VERSION STEAMCLIENT_INTERFACE_VERSION_009
+
+class ISteamMasterServerUpdater: public ISteamMasterServerUpdater001 {};
+#define STEAMMASTERSERVERUPDATER_INTERFACE_VERSION STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001
+
+class ISteamGameServer: public ISteamGameServer010 {};
+#define STEAMGAMESERVER_INTERFACE_VERSION STEAMGAMESERVER_INTERFACE_VERSION_010
+
+class ISteamUtils: public ISteamUtils005 {};
+#define STEAMUTILS_INTERFACE_VERSION STEAMUTILS_INTERFACE_VERSION_005
+
+class ISteamGameServerStats: public ISteamGameServerStats001 {};
+#define STEAMGAMESERVERSTATS_INTERFACE_VERSION STEAMGAMESERVERSTATS_INTERFACE_VERSION_001
 
 /**
  * @brief Sample implementation of the SDK Extension.
@@ -122,8 +139,9 @@ void Hook_Think(bool finalTick);
 void Hook_GameServerSteamAPIActivated(void);
 
 bool Hook_WasRestartRequested();
-bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser);
-void Hook_SendUserDisconnect(CSteamID steamIDUser);
+
+EBeginAuthSessionResult Hook_BeginAuthSession(const void *pAuthTicket, int cbAuthTicket, CSteamID steamID);
+void Hook_EndAuthSession(CSteamID steamID);
 
 bool CheckInterfaces();
 bool LoadSteamclient(ISteamClient **pSteamClient, int method = 0);

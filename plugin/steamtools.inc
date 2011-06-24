@@ -148,6 +148,17 @@ native bool:Steam_IsAchieved(client, String:achievementName[]);
 native Steam_GetNumClientSubscriptions(client);
 native Steam_GetClientSubscription(client, index);
 
+native Steam_GetNumClientDLCs(client);
+native Steam_GetClientDLC(client, index);
+
+enum DLCLicenseStatus
+{
+	HasLicense = 0,				// User has a license for specified app
+	DoesNotHaveLicense = 1,		// User does not have a license for the specified app
+	NoAuth = 2,					// User has not been authenticated
+}
+
+native DLCLicenseStatus:Steam_CheckUserHasDLC(client, appid);
 
 native Steam_GetCSteamIDForClient(client, String:steamID[], maxlength);
 

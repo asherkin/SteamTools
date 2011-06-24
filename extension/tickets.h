@@ -6,10 +6,10 @@
 
 #include "blob.h"
 
-class Section_t
+class GCTokenSection_t
 {
 public:
-	Section_t(
+	GCTokenSection_t(
 		uint32 length,
 		unsigned char unknown[8], 
 		CSteamID steamid, 
@@ -28,6 +28,38 @@ public:
 	uint32 generation;
 };
 
+class SessionSection_t
+{
+public:
+	SessionSection_t(
+		uint32 length,
+		uint32 unk1,
+		uint32 unk2,
+		uint32 externalip,
+		uint32 filler,
+		uint32 sometoken,
+		uint32 unk4)
+	{
+		this->length = length;
+		this->unk1 = unk1;
+		this->unk2 = unk2;
+		this->externalip = externalip;
+		this->filler = filler;
+		this->sometoken = sometoken;
+		this->unk4 = unk4;
+
+	}
+
+	//private:
+	uint32 length;
+	uint32 unk1;
+	uint32 unk2;
+	uint32 externalip;
+	uint32 filler;
+	uint32 sometoken;
+	uint32 unk4;
+};
+
 class OwnershipTicket_t
 {
 public:
@@ -43,7 +75,11 @@ public:
 		uint32 expiration, 
 		uint16 numlicenses, 
 		uint32 licenses[], 
-		uint32 filler)
+		uint16 numdlcs, 
+		uint32 dlcs[], 
+		uint16 numsubs, 
+		uint32 subs[], 
+		uint16 filler)
 	{
 		this->length = length;
 		this->version = version;
@@ -56,6 +92,10 @@ public:
 		this->expiration = expiration;
 		this->numlicenses = numlicenses;
 		this->licenses = licenses;
+		this->numdlcs = numdlcs;
+		this->dlcs = dlcs;
+		this->numsubs = numsubs;
+		this->subs = subs;
 		this->filler = filler;
 	}
 
@@ -78,6 +118,10 @@ public:
 	uint32 expiration;
 	uint16 numlicenses;
 	uint32 *licenses;
+	uint16 numdlcs;
+	uint32 *dlcs;
+	uint16 numsubs;
+	uint32 *subs;
 	uint32 filler;
 };
 
@@ -134,7 +178,7 @@ public:
 				return;
 			}
 			authBlob.AdvancePosition(sectionlength);
-			section = NULL;
+			gcsection = NULL;
 		} else {
 			unsigned char unknown[8];
 			if (!authBlob.Read(unknown, 8))
@@ -148,11 +192,49 @@ public:
 			uint32 generation;
 			AUTHBLOB_READ(uint32, generation);
 
-			section = new Section_t(
+			gcsection = new GCTokenSection_t(
 				sectionlength,
 				unknown,
 				steamid,
 				generation
+				);
+		}
+
+		uint32 sesionsectionlength;
+		AUTHBLOB_READ(uint32, sesionsectionlength);
+
+		if (sesionsectionlength != 24)
+		{
+			if ((authBlob.GetPosition() + sesionsectionlength) > cubAuthBlob)
+			{
+				if (bError)
+					*bError = true;
+				return;
+			}
+			authBlob.AdvancePosition(sesionsectionlength);
+			session = NULL;
+		} else {
+			uint32 unk1;
+			AUTHBLOB_READ(uint32, unk1);
+			uint32 unk2;
+			AUTHBLOB_READ(uint32, unk2);
+			uint32 externalip;
+			AUTHBLOB_READ(uint32, externalip);
+			uint32 filler;
+			AUTHBLOB_READ(uint32, filler);
+			uint32 sometoken;
+			AUTHBLOB_READ(uint32, sometoken);
+			uint32 unk4;
+			AUTHBLOB_READ(uint32, unk4);
+
+			session = new SessionSection_t(
+				sesionsectionlength,
+				unk1,
+				unk2,
+				externalip,
+				filler,
+				sometoken,
+				unk4
 				);
 		}
 
@@ -190,17 +272,33 @@ public:
 			AUTHBLOB_READ(uint32, generation);
 			uint32 expiration;
 			AUTHBLOB_READ(uint32, expiration);
+
 			uint16 numlicenses;
 			AUTHBLOB_READ(uint16, numlicenses);
-
 			uint32 *licenses = new uint32[numlicenses];
 			for (int i = 0; i < numlicenses; i++)
 			{
 				AUTHBLOB_READ(uint32, licenses[i]);
 			}
 
-			uint32 filler;
-			AUTHBLOB_READ(uint32, filler);
+			uint16 numdlcs;
+			AUTHBLOB_READ(uint16, numdlcs);
+			uint32 *dlcs = new uint32[numdlcs];
+			for (int i = 0; i < numdlcs; i++)
+			{
+				AUTHBLOB_READ(uint32, dlcs[i]);
+			}
+
+			uint16 numsubs;
+			AUTHBLOB_READ(uint16, numsubs);
+			uint32 *subs = new uint32[numsubs];
+			for (int i = 0; i < numsubs; i++)
+			{
+				AUTHBLOB_READ(uint32, subs[i]);
+			}
+
+			uint16 filler;
+			AUTHBLOB_READ(uint16, filler);
 
 			unsigned char signature[128];
 			if (!authBlob.Read(signature, 128))
@@ -224,6 +322,10 @@ public:
 				expiration,
 				numlicenses,
 				licenses,
+				numdlcs,
+				dlcs,
+				numsubs,
+				subs,
 				filler
 				),
 				signature
@@ -243,7 +345,8 @@ public:
 
 	//private:
 	uint32 length;
-	Section_t *section;
+	GCTokenSection_t *gcsection;
+	SessionSection_t *session;
 	OwnershipSection_t *ownership;
 };
 

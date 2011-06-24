@@ -58,25 +58,6 @@
 
 #include "extension.h"
 
-#define NO_CSTEAMID_STL
-#define INTERFACEOSW_H
-#include <Steamworks.h>
-
-class ISteamClient: public ISteamClient009 {};
-#define STEAMCLIENT_INTERFACE_VERSION STEAMCLIENT_INTERFACE_VERSION_009
-
-class ISteamMasterServerUpdater: public ISteamMasterServerUpdater001 {};
-#define STEAMMASTERSERVERUPDATER_INTERFACE_VERSION STEAMMASTERSERVERUPDATER_INTERFACE_VERSION_001
-
-class ISteamGameServer: public ISteamGameServer010 {};
-#define STEAMGAMESERVER_INTERFACE_VERSION STEAMGAMESERVER_INTERFACE_VERSION_010
-
-class ISteamUtils: public ISteamUtils005 {};
-#define STEAMUTILS_INTERFACE_VERSION STEAMUTILS_INTERFACE_VERSION_005
-
-class ISteamGameServerStats: public ISteamGameServerStats001 {};
-#define STEAMGAMESERVERSTATS_INTERFACE_VERSION STEAMGAMESERVERSTATS_INTERFACE_VERSION_001
-
 #include "filesystem.h"
 #include "tickets.h"
 #include "utlmap.h"
@@ -93,8 +74,9 @@ SH_DECL_HOOK1_void(IServerGameDLL, Think, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK0_void(IServerGameDLL, GameServerSteamAPIActivated, SH_NOATTRIB, 0);
 
 SH_DECL_HOOK0(ISteamMasterServerUpdater, WasRestartRequested, SH_NOATTRIB, 0, bool);
-SH_DECL_HOOK4(ISteamGameServer, SendUserConnectAndAuthenticate, SH_NOATTRIB, 0, bool, uint32, const void *, uint32, CSteamID *);
-SH_DECL_HOOK1_void(ISteamGameServer, SendUserDisconnect, SH_NOATTRIB, 0, CSteamID);
+
+SH_DECL_HOOK3(ISteamGameServer, BeginAuthSession, SH_NOATTRIB, 0, EBeginAuthSessionResult, const void *, int, CSteamID);
+SH_DECL_HOOK1_void(ISteamGameServer, EndAuthSession, SH_NOATTRIB, 0, CSteamID);
 
 ConVar SteamToolsVersion("steamtools_version", SMEXT_CONF_VERSION, FCVAR_NOTIFY|FCVAR_REPLICATED, SMEXT_CONF_DESCRIPTION);
 
@@ -112,13 +94,18 @@ SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
 
 typedef CUtlMap<uint32, CCopyableUtlVector<uint32> > SubIDMap;
-
 bool SubIDLessFunc(const SubIDMap::KeyType_t &in1, const SubIDMap::KeyType_t &in2)
 {
 	return (in1 < in2);
 };
-
 SubIDMap g_subIDs(SubIDLessFunc);
+
+typedef CUtlMap<uint32, CCopyableUtlVector<uint32> > DLCMap;
+bool DLCLessFunc(const DLCMap::KeyType_t &in1, const DLCMap::KeyType_t &in2)
+{
+	return (in1 < in2);
+};
+DLCMap g_DLCs(DLCLessFunc);
 
 typedef HSteamPipe (*GetPipeFn)();
 typedef HSteamUser (*GetUserFn)();
@@ -136,8 +123,9 @@ int g_ThinkHookID = 0;
 int g_GameServerSteamAPIActivatedHookID = 0;
 
 int g_WasRestartRequestedHookID = 0;
-int g_SendUserConnectAndAuthenticateHookID = 0;
-int g_SendUserDisconnectHookID = 0;
+
+int g_BeginAuthSessionHookID = 0;
+int g_EndAuthSessionHookID = 0;
 
 bool g_SteamServersConnected = false;
 bool g_SteamLoadFailed = false;
@@ -188,8 +176,9 @@ void Hook_GameServerSteamAPIActivated(void)
 		return;
 
 	g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), false);
-	g_SendUserConnectAndAuthenticateHookID = SH_ADD_HOOK(ISteamGameServer, SendUserConnectAndAuthenticate, g_pSteamGameServer, SH_STATIC(Hook_SendUserConnectAndAuthenticate), true);
-	g_SendUserDisconnectHookID = SH_ADD_HOOK(ISteamGameServer, SendUserDisconnect, g_pSteamGameServer, SH_STATIC(Hook_SendUserDisconnect), true);
+
+	g_BeginAuthSessionHookID = SH_ADD_HOOK(ISteamGameServer, BeginAuthSession, g_pSteamGameServer, SH_STATIC(Hook_BeginAuthSession), true);
+	g_EndAuthSessionHookID = SH_ADD_HOOK(ISteamGameServer, EndAuthSession, g_pSteamGameServer, SH_STATIC(Hook_EndAuthSession), true);
 
 	g_SMAPI->ConPrintf("[STEAMTOOLS] Loading complete.\n");
 
@@ -596,11 +585,12 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	return true;
 }
 
-void Hook_SendUserDisconnect(CSteamID steamIDUser)
+void Hook_EndAuthSession(CSteamID steamID)
 {
-	if (steamIDUser.BIndividualAccount() && steamIDUser.GetUnAccountInstance() == 1)
+	if (steamID.BIndividualAccount() && steamID.GetUnAccountInstance() == 1)
 	{
-		g_subIDs.Remove(steamIDUser.GetAccountID());
+		g_subIDs.Remove(steamID.GetAccountID());
+		g_DLCs.Remove(steamID.GetAccountID());
 	}
 
 	RETURN_META(MRES_IGNORED);
@@ -650,6 +640,7 @@ bool Hook_WasRestartRequested()
 	RETURN_META_VALUE(MRES_SUPERCEDE, (cellResults < Pl_Handled)?bWasRestartRequested:false);
 }
 
+/*
 CON_COMMAND(st_ticket, "")
 {
 	FileHandle_t ticketFile = g_pFullFileSystem->Open("ticket.bin", "rb", "MOD");
@@ -701,10 +692,53 @@ CON_COMMAND(st_ticket, "")
 
 	free(ticketBuffer);
 }
+*/
 
-ConVar ParseBadTickets("steamtools_parse_bad_tickets", "1", FCVAR_NONE, "", true, 0.0, true, 1.0);
-ConVar DumpBadTickets("steamtools_dump_unknown_tickets", "1", FCVAR_NONE, "", true, 0.0, true, 1.0);
+//ConVar ParseBadTickets("steamtools_parse_bad_tickets", "1", FCVAR_NONE, "", true, 0.0, true, 1.0);
+//ConVar DumpBadTickets("steamtools_dump_unknown_tickets", "1", FCVAR_NONE, "", true, 0.0, true, 1.0);
+ConVar DumpTickets("steamtools_dump_tickets", "0", FCVAR_NONE, "", true, 0.0, true, 1.0);
 
+EBeginAuthSessionResult Hook_BeginAuthSession(const void *pAuthTicket, int cbAuthTicket, CSteamID steamID)
+{
+	EBeginAuthSessionResult ret = META_RESULT_ORIG_RET(EBeginAuthSessionResult);
+
+	if (DumpTickets.GetBool())
+	{
+		char fileName[64];
+		g_pSM->Format(fileName, 64, "ticket_%u_%u_%u.bin", steamID.GetAccountID(), cbAuthTicket, time(NULL));
+
+		FileHandle_t ticketFile = g_pFullFileSystem->Open(fileName, "wb", "MOD");
+		if (!ticketFile)
+		{
+			g_pSM->LogError(myself, "Unable to open %s for writing.", fileName);
+		} else {
+			g_pFullFileSystem->Write(pAuthTicket, cbAuthTicket, ticketFile);
+
+			g_pFullFileSystem->Close(ticketFile);
+
+			g_pSM->LogMessage(myself, "Wrote ticket to %s", fileName);
+		}
+	}
+
+	bool error = false;
+	AuthBlob_t authblob(pAuthTicket, cbAuthTicket, &error);
+
+	if (error) // An error was encountered trying to parse the ticket.
+	{
+		g_pSM->LogError(myself, "Failed to parse ticket from %s, subscription and DLC info will not be available.", steamID.Render());
+		RETURN_META_VALUE(MRES_IGNORED, (EBeginAuthSessionResult)NULL);
+	}
+
+	SubIDMap::IndexType_t subIndex = g_subIDs.Insert(steamID.GetAccountID());
+	g_subIDs.Element(subIndex).CopyArray(authblob.ownership->ticket->licenses, authblob.ownership->ticket->numlicenses);
+
+	DLCMap::IndexType_t DLCIndex = g_DLCs.Insert(steamID.GetAccountID());
+	g_DLCs.Element(DLCIndex).CopyArray(authblob.ownership->ticket->dlcs, authblob.ownership->ticket->numdlcs);
+
+	RETURN_META_VALUE(MRES_IGNORED, (EBeginAuthSessionResult)NULL);
+}
+
+/*
 bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBlob, uint32 cubAuthBlobSize, CSteamID *pSteamIDUser)
 {
 	bool ret = META_RESULT_ORIG_RET(bool);
@@ -784,6 +818,7 @@ bool Hook_SendUserConnectAndAuthenticate(uint32 unIPClient, const void *pvAuthBl
 
 	RETURN_META_VALUE(MRES_IGNORED, (bool)NULL);
 }
+*/
 
 bool SteamTools::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late)
 {
@@ -836,15 +871,15 @@ void SteamTools::SDK_OnUnload()
 		SH_REMOVE_HOOK_ID(g_WasRestartRequestedHookID);
 		g_WasRestartRequestedHookID = 0;
 	}
-	if (g_SendUserConnectAndAuthenticateHookID != 0)
+	if (g_BeginAuthSessionHookID != 0)
 	{
-		SH_REMOVE_HOOK_ID(g_SendUserConnectAndAuthenticateHookID);
-		g_SendUserConnectAndAuthenticateHookID = 0;
+		SH_REMOVE_HOOK_ID(g_BeginAuthSessionHookID);
+		g_BeginAuthSessionHookID = 0;
 	}
-	if (g_SendUserDisconnectHookID != 0)
+	if (g_EndAuthSessionHookID != 0)
 	{
-		SH_REMOVE_HOOK_ID(g_SendUserDisconnectHookID);
-		g_SendUserDisconnectHookID = 0;
+		SH_REMOVE_HOOK_ID(g_EndAuthSessionHookID);
+		g_EndAuthSessionHookID = 0;
 	}
 
 	g_pForwards->ReleaseForward(g_pForwardGroupStatusResult);
@@ -1194,7 +1229,7 @@ static cell_t GetNumClientSubscriptions(IPluginContext *pContext, const cell_t *
 
 	SubIDMap::IndexType_t index = g_subIDs.Find(pSteamID->GetAccountID());
 	if (!g_subIDs.IsValidIndex(index))
-		return pContext->ThrowNativeError("No subscriptions were found for client %d", params[1]);
+		return 0;
 
 	return g_subIDs.Element(index).Count();
 }
@@ -1219,6 +1254,65 @@ static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *para
 		return pContext->ThrowNativeError("Subscription index %u is out of bounds for client %d", index, params[1]);
 
 	return g_subIDs.Element(index).Element(params[2]);
+}
+
+static cell_t GetNumClientDLCs(IPluginContext *pContext, const cell_t *params)
+{
+	const CSteamID *pSteamID;
+	if(params[1] > -1)
+	{
+		pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
+	} else {
+		return pContext->ThrowNativeError("Custom SteamID can not be used for this function", params[1]);
+	}
+	if (!pSteamID)
+		return pContext->ThrowNativeError("No SteamID found for client %d", params[1]);
+
+	DLCMap::IndexType_t index = g_DLCs.Find(pSteamID->GetAccountID());
+	if (!g_DLCs.IsValidIndex(index))
+		return 0;
+
+	return g_DLCs.Element(index).Count();
+}
+
+static cell_t GetClientDLC(IPluginContext *pContext, const cell_t *params)
+{
+	const CSteamID *pSteamID;
+	if(params[1] > -1)
+	{
+		pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
+	} else {
+		return pContext->ThrowNativeError("Custom SteamID can not be used for this function", params[1]);
+	}
+	if (!pSteamID)
+		return pContext->ThrowNativeError("No SteamID found for client %d", params[1]);
+
+	DLCMap::IndexType_t index = g_DLCs.Find(pSteamID->GetAccountID());
+	if (!g_DLCs.IsValidIndex(index))
+		return pContext->ThrowNativeError("No DLCs were found for client %d", params[1]);
+
+	if(!g_DLCs.Element(index).IsValidIndex(params[2]))
+		return pContext->ThrowNativeError("DLC index %u is out of bounds for client %d", index, params[1]);
+
+	return g_DLCs.Element(index).Element(params[2]);
+}
+
+static cell_t CheckUserHasDLC(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamGameServer)
+		return k_EUserHasLicenseResultNoAuth;
+
+	const CSteamID *pSteamID;
+	if(params[1] > -1)
+	{
+		pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
+	} else {
+		return pContext->ThrowNativeError("Custom SteamID can not be used for this function", params[1]);
+	}
+	if (!pSteamID)
+		return pContext->ThrowNativeError("No SteamID found for client %d", params[1]);
+
+	return g_pSteamGameServer->UserHasLicenseForApp(*pSteamID, params[2]);
 }
 
 static cell_t GetCSteamIDForClient(IPluginContext *pContext, const cell_t *params)
@@ -1355,6 +1449,9 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_IsAchieved",					IsAchieved },
 	{ "Steam_GetNumClientSubscriptions",	GetNumClientSubscriptions },
 	{ "Steam_GetClientSubscription",		GetClientSubscription },
+	{ "Steam_GetNumClientDLCs",				GetNumClientDLCs },
+	{ "Steam_GetClientDLC",					GetClientDLC },
+	{ "Steam_CheckUserHasDLC",				CheckUserHasDLC },
 	{ "Steam_GetCSteamIDForClient",			GetCSteamIDForClient },
 	{ "Steam_RenderedIDToCSteamID",			RenderedIDToCSteamID },
 	{ "Steam_CSteamIDToRenderedID",			CSteamIDToRenderedID },
