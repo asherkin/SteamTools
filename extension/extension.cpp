@@ -919,6 +919,7 @@ CON_COMMAND(steamid, "") {
 }
 
 CSteamID atocsteamid(const char *pRenderedID) {
+	/*
 	char renderedID[32];
 	V_strcpy(renderedID, pRenderedID);
 
@@ -943,6 +944,32 @@ CSteamID atocsteamid(const char *pRenderedID) {
 	uint32 account = ((halfAccount << 1) | parity);
 
 	return CSteamID(account, k_EUniversePublic, k_EAccountTypeIndividual);
+	*/
+
+	// Convert the Steam2 ID string to a Steam2 ID structure
+	TSteamGlobalUserID steam2ID;
+	steam2ID.m_SteamInstanceID = 0;
+	steam2ID.m_SteamLocalUserID.Split.High32bits = 0;
+	steam2ID.m_SteamLocalUserID.Split.Low32bits	= 0;
+
+	const char *pchTSteam2ID = pRenderedID;
+
+	const char *pchOptionalLeadString = "STEAM_";
+	if (Q_strnicmp(pRenderedID, pchOptionalLeadString, Q_strlen(pchOptionalLeadString)) == 0)
+		pchTSteam2ID = pRenderedID + Q_strlen(pchOptionalLeadString);
+
+	char cExtraCharCheck = 0;
+
+	int cFieldConverted = sscanf(pchTSteam2ID, "%hu:%u:%u%c", &steam2ID.m_SteamInstanceID, &steam2ID.m_SteamLocalUserID.Split.High32bits, &steam2ID.m_SteamLocalUserID.Split.Low32bits, &cExtraCharCheck);
+
+	// Validate the conversion ... a special case is steam2 instance ID 1 which is reserved for special DoD handling
+	if (cExtraCharCheck != 0 || cFieldConverted == EOF || cFieldConverted < 2 || (cFieldConverted < 3 && steam2ID.m_SteamInstanceID != 1))
+		return k_steamIDNil;
+
+	// Now convert to steam ID from the Steam2 ID structure
+	CSteamID steamID;
+	steamID.SetFromSteam2(&steam2ID, k_EUniversePublic);
+	return steamID;
 }
 
 static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
