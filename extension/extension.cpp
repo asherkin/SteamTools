@@ -1314,6 +1314,7 @@ static cell_t GetCSteamIDForClient(IPluginContext *pContext, const cell_t *param
 
 	char *steamIDString = new char[params[3]];
 	int numbytes = g_pSM->Format(steamIDString, params[3], "%llu", pSteamID->ConvertToUint64());
+	numbytes++; // Format's return value doesn't include the NULL terminator.
 
 	pContext->StringToLocal(params[2], numbytes, steamIDString);
 	return numbytes;
@@ -1330,6 +1331,7 @@ static cell_t RenderedIDToCSteamID(IPluginContext *pContext, const cell_t *param
 	{
 		char *steamIDString = new char[params[3]];
 		int numbytes = g_pSM->Format(steamIDString, params[3], "%llu", steamID.ConvertToUint64());
+		numbytes++; // Format's return value doesn't include the NULL terminator.
 
 		pContext->StringToLocal(params[2], numbytes, steamIDString);
 		return numbytes;
@@ -1349,6 +1351,7 @@ static cell_t CSteamIDToRenderedID(IPluginContext *pContext, const cell_t *param
 	{
 		char *pRenderedSteamID = new char[params[3]];
 		int numbytes = g_pSM->Format(pRenderedSteamID, params[3], "%s", steamID.Render());
+		numbytes++; // Format's return value doesn't include the NULL terminator.
 
 		pContext->StringToLocal(params[2], numbytes, pRenderedSteamID);
 		return numbytes;
@@ -1381,6 +1384,7 @@ static cell_t GetCustomSteamID(IPluginContext *pContext, const cell_t *params)
 
 	char *steamIDString = new char[params[2]];
 	int numbytes = g_pSM->Format(steamIDString, params[2], "%s", g_CustomSteamID.Render());
+	numbytes++; // Format's return value doesn't include the NULL terminator.
 
 	pContext->StringToLocal(params[1], numbytes, steamIDString);
 	return numbytes;
@@ -1390,6 +1394,7 @@ static cell_t GroupIDToCSteamID(IPluginContext *pContext, const cell_t *params)
 {
 	char *steamIDString = new char[params[3]];
 	int numbytes = g_pSM->Format(steamIDString, params[3], "%llu", CSteamID(params[1], k_EUniversePublic, k_EAccountTypeClan).ConvertToUint64());
+	numbytes++; // Format's return value doesn't include the NULL terminator.
 
 	pContext->StringToLocal(params[2], numbytes, steamIDString);
 	return numbytes;
