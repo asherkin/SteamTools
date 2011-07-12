@@ -729,6 +729,12 @@ EBeginAuthSessionResult Hook_BeginAuthSession(const void *pAuthTicket, int cbAut
 		RETURN_META_VALUE(MRES_IGNORED, (EBeginAuthSessionResult)NULL);
 	}
 
+	if (authblob.ownership == NULL || authblob.ownership->ticket == NULL)
+	{
+		g_pSM->LogError(myself, "Missing sections in ticket from %s, subscription and DLC info will not be available.", steamID.Render());
+		RETURN_META_VALUE(MRES_IGNORED, (EBeginAuthSessionResult)NULL);
+	}
+
 	SubIDMap::IndexType_t subIndex = g_subIDs.Insert(steamID.GetAccountID());
 	g_subIDs.Element(subIndex).CopyArray(authblob.ownership->ticket->licenses, authblob.ownership->ticket->numlicenses);
 
