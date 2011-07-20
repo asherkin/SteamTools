@@ -1255,7 +1255,10 @@ static cell_t GetNumClientSubscriptions(IPluginContext *pContext, const cell_t *
 	{
 		pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
 	} else {
-		return pContext->ThrowNativeError("Custom SteamID can not be used for this function", params[1]);
+		if (g_CustomSteamID.IsValid())
+			pSteamID = &g_CustomSteamID;
+		else
+			return pContext->ThrowNativeError("Custom SteamID not set.");
 	}
 	if (!pSteamID)
 		return pContext->ThrowNativeError("No SteamID found for client %d", params[1]);
@@ -1274,7 +1277,10 @@ static cell_t GetClientSubscription(IPluginContext *pContext, const cell_t *para
 	{
 		pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
 	} else {
-		return pContext->ThrowNativeError("Custom SteamID can not be used for this function", params[1]);
+		if (g_CustomSteamID.IsValid())
+			pSteamID = &g_CustomSteamID;
+		else
+			return pContext->ThrowNativeError("Custom SteamID not set.");
 	}
 	if (!pSteamID)
 		return pContext->ThrowNativeError("No SteamID found for client %d", params[1]);
@@ -1296,7 +1302,10 @@ static cell_t GetNumClientDLCs(IPluginContext *pContext, const cell_t *params)
 	{
 		pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
 	} else {
-		return pContext->ThrowNativeError("Custom SteamID can not be used for this function", params[1]);
+		if (g_CustomSteamID.IsValid())
+			pSteamID = &g_CustomSteamID;
+		else
+			return pContext->ThrowNativeError("Custom SteamID not set.");
 	}
 	if (!pSteamID)
 		return pContext->ThrowNativeError("No SteamID found for client %d", params[1]);
@@ -1315,7 +1324,10 @@ static cell_t GetClientDLC(IPluginContext *pContext, const cell_t *params)
 	{
 		pSteamID = engine->GetClientSteamID(engine->PEntityOfEntIndex(params[1]));
 	} else {
-		return pContext->ThrowNativeError("Custom SteamID can not be used for this function", params[1]);
+		if (g_CustomSteamID.IsValid())
+			pSteamID = &g_CustomSteamID;
+		else
+			return pContext->ThrowNativeError("Custom SteamID not set.");
 	}
 	if (!pSteamID)
 		return pContext->ThrowNativeError("No SteamID found for client %d", params[1]);
