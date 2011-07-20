@@ -3,6 +3,8 @@
 #endif
 #define _steamtools_included
 
+#define USE_CUSTOM_STEAMID -1
+
 /**
  * Called after SteamTools has completely finished loading. 
  * No features are available before this point.
@@ -118,7 +120,7 @@ forward Steam_SteamServersDisconnected();
  *
  * @noreturn
  */
-native Steam_SetRule(String:key[], String:value[]);
+native Steam_SetRule(const String:key[], const String:value[]);
 
 /**
  * Clears the server's list of rules. This list is used to build the 
@@ -131,8 +133,8 @@ native Steam_ClearRules();
 
 
 native Steam_ForceHeartbeat();
-native bool:Steam_AddMasterServer(String:serverAddress[]);
-native bool:Steam_RemoveMasterServer(String:serverAddress[]);
+native bool:Steam_AddMasterServer(const String:serverAddress[]);
+native bool:Steam_RemoveMasterServer(const String:serverAddress[]);
 native Steam_GetNumMasterServers();
 native Steam_GetMasterServerAddress(server, String:serverAddress[], maxlength);
 
@@ -140,9 +142,9 @@ native Steam_GetMasterServerAddress(server, String:serverAddress[], maxlength);
 native Steam_RequestStats(client);
 forward Steam_StatsReceived(client);
 forward Steam_StatsUnloaded(client);
-native Steam_GetStat(client, String:statName[]);
-native Float:Steam_GetStatFloat(client, String:statName[]);
-native bool:Steam_IsAchieved(client, String:achievementName[]);
+native Steam_GetStat(client, const String:statName[]);
+native Float:Steam_GetStatFloat(client, const String:statName[]);
+native bool:Steam_IsAchieved(client, const String:achievementName[]);
 
 
 native Steam_GetNumClientSubscriptions(client);
@@ -181,14 +183,14 @@ stock bool:Steam_CheckClientDLC(client, appid)
 
 native Steam_GetCSteamIDForClient(client, String:steamID[], maxlength);
 
-native bool:Steam_SetCustomSteamID(String:renderedID[]);
+native bool:Steam_SetCustomSteamID(const String:renderedID[]);
 native bool:Steam_GetCustomSteamID(String:renderedID[], maxlength);
 
-native Steam_RenderedIDToCSteamID(String:renderedID[], String:steamID[], maxlength);
-native Steam_CSteamIDToRenderedID(String:steamID[], String:renderedID[], maxlength);
+native Steam_RenderedIDToCSteamID(const String:renderedID[], String:steamID[], maxlength);
+native Steam_CSteamIDToRenderedID(const String:steamID[], String:renderedID[], maxlength);
 
 native Steam_GroupIDToCSteamID(groupID, String:steamID[], maxlength);
-native Steam_CSteamIDToGroupID(String:steamID[]);
+native Steam_CSteamIDToGroupID(const String:steamID[]);
 
 public Extension:__ext_SteamTools = 
 {
