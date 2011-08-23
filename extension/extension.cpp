@@ -480,6 +480,7 @@ bool LoadSteamclient(ISteamClient **pSteamClient, int method)
 	{
 	case 0:
 		{
+#ifdef _LINUX
 #if defined _WIN32
 			CSysModule *pModSteamClient = g_pFullFileSystem->LoadModule("../bin/steamclient.dll", "MOD", false);
 #elif defined _LINUX
@@ -491,6 +492,9 @@ bool LoadSteamclient(ISteamClient **pSteamClient, int method)
 				break;
 			}
 			steamclient_library = reinterpret_cast<HMODULE>(pModSteamClient);
+#else
+			g_SMAPI->ConPrintf("[STEAMTOOLS] Method 1 disabled on Windows...\n", (method + 1));
+#endif
 			break;
 		}
 #ifdef _WIN32
