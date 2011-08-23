@@ -93,19 +93,16 @@ CSteamID g_CustomSteamID = k_steamIDNil;
 SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
 
-typedef CUtlMap<uint32, CCopyableUtlVector<uint32> > SubIDMap;
-bool SubIDLessFunc(const SubIDMap::KeyType_t &in1, const SubIDMap::KeyType_t &in2)
+bool MapLessFunc(const uint32 &in1, const uint32 &in2)
 {
 	return (in1 < in2);
 };
-SubIDMap g_subIDs(SubIDLessFunc);
+
+typedef CUtlMap<uint32, CCopyableUtlVector<uint32> > SubIDMap;
+SubIDMap g_subIDs(MapLessFunc);
 
 typedef CUtlMap<uint32, CCopyableUtlVector<uint32> > DLCMap;
-bool DLCLessFunc(const DLCMap::KeyType_t &in1, const DLCMap::KeyType_t &in2)
-{
-	return (in1 < in2);
-};
-DLCMap g_DLCs(DLCLessFunc);
+DLCMap g_DLCs(MapLessFunc);
 
 typedef HSteamPipe (*GetPipeFn)();
 typedef HSteamUser (*GetUserFn)();
@@ -832,24 +829,8 @@ bool SteamTools::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bo
 	GET_V_IFACE_CURRENT(GetEngineFactory, g_pLocalCVar, ICvar, CVAR_INTERFACE_VERSION);
 	GET_V_IFACE_CURRENT(GetFileSystemFactory, g_pFullFileSystem, IFileSystem, FILESYSTEM_INTERFACE_VERSION);
 
-	if (!g_pServerGameDLL)
-	{
-		snprintf(error, maxlen, "Could not find interface %s", INTERFACEVERSION_SERVERGAMEDLL);
-		return false;
-	}
-	if (!g_pLocalCVar)
-	{
-		snprintf(error, maxlen, "Could not find interface %s", CVAR_INTERFACE_VERSION);
-		return false;
-	}
-	if (!g_pFullFileSystem)
-	{
-		snprintf(error, maxlen, "Could not find interface %s", FILESYSTEM_INTERFACE_VERSION);
-		return false;
-	}
-
 	g_pCVar = g_pLocalCVar;
-	ConVar_Register(0, this);
+	ConVar_Register(FCVAR_NONE, this);
 
 	return true;
 }
@@ -862,6 +843,8 @@ bool SteamTools::RegisterConCommandBase(ConCommandBase *pCommand)
 
 void SteamTools::SDK_OnUnload()
 {
+	plsys->RemovePluginsListener(this);
+
 	if (g_ThinkHookID != 0)
 	{
 		SH_REMOVE_HOOK_ID(g_ThinkHookID);
@@ -896,11 +879,9 @@ void SteamTools::SDK_OnUnload()
 
 	g_pForwards->ReleaseForward(g_pForwardSteamServersConnected);
 	g_pForwards->ReleaseForward(g_pForwardSteamServersDisconnected);
-
-	plsys->RemovePluginsListener(this);
 }
 
-bool SteamTools::QueryRunning( char *error, size_t maxlen )
+bool SteamTools::QueryRunning(char *error, size_t maxlen)
 {
 	if (g_SteamLoadFailed)
 	{
@@ -910,48 +891,8 @@ bool SteamTools::QueryRunning( char *error, size_t maxlen )
 	return true;
 }
 
-CON_COMMAND(steamid, "") {
-	if (args.ArgC() != 2) {
-		META_CONPRINTF("Usage: %s <steamid>\n", args.Arg(0));
-		return;
-	}
-
-	CSteamID steamID = atocsteamid(args.Arg(1));
-
-	if (steamID.IsValid())
-		META_CONPRINTF("%s --> %llu (%lu)\n", args.Arg(1), steamID.ConvertToUint64(), steamID.GetAccountID());
-	else
-		META_CONPRINTF("%s is not a valid SteamID\n", args.Arg(1));
-}
-
-CSteamID atocsteamid(const char *pRenderedID) {
-	/*
-	char renderedID[32];
-	V_strcpy(renderedID, pRenderedID);
-
-	char *strPrefix = strtok(renderedID, ":");
-	char *strParity = strtok(NULL, ":");
-	char *strHalfAccount = strtok(NULL, ":");
-
-	if (strPrefix == NULL || strParity == NULL || strHalfAccount == NULL)
-		return k_steamIDNil;
-
-	if (V_strlen(strPrefix) > 6 || V_strncmp(strPrefix, "STEAM_", 6) != 0)
-		return k_steamIDNil;
-
-	int parity = atoi(strParity);
-	if (parity != 0 && parity != 1)
-		return k_steamIDNil;
-
-	long halfAccount = atol(strHalfAccount);
-	if (halfAccount < 0 || halfAccount == LONG_MAX)
-		return k_steamIDNil;
-
-	uint32 account = ((halfAccount << 1) | parity);
-
-	return CSteamID(account, k_EUniversePublic, k_EAccountTypeIndividual);
-	*/
-
+CSteamID atocsteamid(const char *pRenderedID)
+{
 	// Convert the Steam2 ID string to a Steam2 ID structure
 	TSteamGlobalUserID steam2ID;
 	steam2ID.m_SteamInstanceID = 0;
