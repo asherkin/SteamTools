@@ -133,9 +133,14 @@ native Steam_ClearRules();
 
 
 native Steam_ForceHeartbeat();
+
+#pragma deprecated No longer operational
 native bool:Steam_AddMasterServer(const String:serverAddress[]);
+#pragma deprecated No longer operational
 native bool:Steam_RemoveMasterServer(const String:serverAddress[]);
+#pragma deprecated No longer operational
 native Steam_GetNumMasterServers();
+#pragma deprecated No longer operational
 native Steam_GetMasterServerAddress(server, String:serverAddress[], maxlength);
 
 

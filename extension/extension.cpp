@@ -73,7 +73,7 @@ SMEXT_LINK(&g_SteamTools);
 SH_DECL_HOOK1_void(IServerGameDLL, Think, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK0_void(IServerGameDLL, GameServerSteamAPIActivated, SH_NOATTRIB, 0);
 
-SH_DECL_HOOK0(ISteamMasterServerUpdater, WasRestartRequested, SH_NOATTRIB, 0, bool);
+SH_DECL_HOOK0(ISteamGameServer, WasRestartRequested, SH_NOATTRIB, 0, bool);
 
 SH_DECL_HOOK3(ISteamGameServer, BeginAuthSession, SH_NOATTRIB, 0, EBeginAuthSessionResult, const void *, int, CSteamID);
 SH_DECL_HOOK1_void(ISteamGameServer, EndAuthSession, SH_NOATTRIB, 0, CSteamID);
@@ -85,7 +85,6 @@ ICvar *g_pLocalCVar = NULL;
 IFileSystem *g_pFullFileSystem = NULL;
 
 ISteamGameServer *g_pSteamGameServer = NULL;
-ISteamMasterServerUpdater *g_pSteamMasterServerUpdater = NULL;
 ISteamUtils *g_pSteamUtils = NULL;
 ISteamGameServerStats *g_pSteamGameServerStats = NULL;
 
@@ -165,14 +164,13 @@ void Hook_GameServerSteamAPIActivated(void)
 		return;
 
 	g_pSteamGameServer = (ISteamGameServer *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION);
-	g_pSteamMasterServerUpdater = (ISteamMasterServerUpdater *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMMASTERSERVERUPDATER_INTERFACE_VERSION);
 	g_pSteamUtils = (ISteamUtils *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMUTILS_INTERFACE_VERSION);
 	g_pSteamGameServerStats = (ISteamGameServerStats *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamUser(), STEAMGAMESERVERSTATS_INTERFACE_VERSION);
 
 	if (!CheckInterfaces())
 		return;
 
-	g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamMasterServerUpdater, WasRestartRequested, g_pSteamMasterServerUpdater, SH_STATIC(Hook_WasRestartRequested), false);
+	g_WasRestartRequestedHookID = SH_ADD_HOOK(ISteamGameServer, WasRestartRequested, g_pSteamGameServer, SH_STATIC(Hook_WasRestartRequested), false);
 
 	g_BeginAuthSessionHookID = SH_ADD_HOOK(ISteamGameServer, BeginAuthSession, g_pSteamGameServer, SH_STATIC(Hook_BeginAuthSession), true);
 	g_EndAuthSessionHookID = SH_ADD_HOOK(ISteamGameServer, EndAuthSession, g_pSteamGameServer, SH_STATIC(Hook_EndAuthSession), true);
@@ -259,7 +257,8 @@ void Hook_Think(bool finalTick)
 					g_pForwardGameplayStats->PushCell(GameplayStats->m_unTotalMinutesPlayed);
 					g_pForwardGameplayStats->Execute(NULL);
 				} else {
-					g_pSM->LogError(myself, "Server Gameplay Stats received with an unexpected eResult. (eResult = %d) (If the server just started and the eResult is 2, this is expected.)", GameplayStats->m_eResult);
+					if (GameplayStats->m_eResult != k_EResultFail || g_pSteamGameServer->BLoggedOn())
+						g_pSM->LogError(myself, "Server Gameplay Stats received with an unexpected eResult. (eResult = %d)", GameplayStats->m_eResult);
 				}
 				FreeLastCallback(g_GameServerSteamPipe());
 				break;
@@ -431,12 +430,6 @@ bool CheckInterfaces()
 	if (!g_pSteamGameServer)
 	{
 		g_pSM->LogError(myself, "Could not find interface %s", STEAMGAMESERVER_INTERFACE_VERSION);
-		g_SteamLoadFailed = true;
-	}
-	
-	if (!g_pSteamMasterServerUpdater)
-	{
-		g_pSM->LogError(myself, "Could not find interface %s", STEAMMASTERSERVERUPDATER_INTERFACE_VERSION);
 		g_SteamLoadFailed = true;
 	}
 	
@@ -634,7 +627,7 @@ bool Hook_WasRestartRequested()
 {
 	cell_t cellResults = 0;
 	bool bWasRestartRequested = false;
-	if ((bWasRestartRequested = SH_CALL(g_pSteamMasterServerUpdater, &ISteamMasterServerUpdater::WasRestartRequested)()))
+	if ((bWasRestartRequested = SH_CALL(g_pSteamGameServer, &ISteamGameServer::WasRestartRequested)()))
 	{
 		g_pForwardRestartRequested->Execute(&cellResults);
 	}
@@ -969,10 +962,10 @@ static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *pa
 
 static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params)
 {
-	if (!g_pSteamMasterServerUpdater)
+	if (!g_pSteamGameServer)
 		return 0;
 
-	g_pSteamMasterServerUpdater->ForceHeartbeat();
+	g_pSteamGameServer->ForceHeartbeat();
 	return 0;
 }
 
@@ -1022,63 +1015,44 @@ static cell_t GetPublicIP(IPluginContext *pContext, const cell_t *params)
 
 static cell_t SetKeyValue(IPluginContext *pContext, const cell_t *params)
 {
-	if (!g_pSteamMasterServerUpdater)
+	if (!g_pSteamGameServer)
 		return 0;
 
 	char *pKey;
 	pContext->LocalToString(params[1], &pKey);
 	char *pValue;
 	pContext->LocalToString(params[2], &pValue);
-	g_pSteamMasterServerUpdater->SetKeyValue(pKey, pValue);
+	g_pSteamGameServer->SetKeyValue(pKey, pValue);
 	return 0;
 }
 
 static cell_t ClearAllKeyValues(IPluginContext *pContext, const cell_t *params)
 {
-	if (!g_pSteamMasterServerUpdater)
+	if (!g_pSteamGameServer)
 		return 0;
 
-	g_pSteamMasterServerUpdater->ClearAllKeyValues();
+	g_pSteamGameServer->ClearAllKeyValues();
 	return 0;
 }
 
 static cell_t AddMasterServer(IPluginContext *pContext, const cell_t *params)
 {
-	if (!g_pSteamMasterServerUpdater)
-		return 0;
-
-	char *pServerAddress;
-	pContext->LocalToString(params[1], &pServerAddress);
-	return g_pSteamMasterServerUpdater->AddMasterServer(pServerAddress);
+	return pContext->ThrowNativeError("AddMasterServer function no longer operational.");
 }
 
 static cell_t RemoveMasterServer(IPluginContext *pContext, const cell_t *params)
 {
-	if (!g_pSteamMasterServerUpdater)
-		return 0;
-
-	char *pServerAddress;
-	pContext->LocalToString(params[1], &pServerAddress);
-	return g_pSteamMasterServerUpdater->RemoveMasterServer(pServerAddress);
+	return pContext->ThrowNativeError("RemoveMasterServer function no longer operational.");
 }
 
 static cell_t GetNumMasterServers(IPluginContext *pContext, const cell_t *params)
 {
-	if (!g_pSteamMasterServerUpdater)
-		return 0;
-
-	return g_pSteamMasterServerUpdater->GetNumMasterServers();
+	return pContext->ThrowNativeError("GetNumMasterServers function no longer operational.");
 }
 
 static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *params)
 {
-	if (!g_pSteamMasterServerUpdater)
-		return 0;
-
-	char *serverAddress = new char[params[3]];
-	int numbytes = g_pSteamMasterServerUpdater->GetMasterServerAddress(params[1], serverAddress, params[3]);
-	pContext->StringToLocal(params[2], numbytes, serverAddress);
-	return numbytes;
+	return pContext->ThrowNativeError("GetMasterServerAddress function no longer operational.");
 }
 
 static cell_t RequestStats(IPluginContext *pContext, const cell_t *params)

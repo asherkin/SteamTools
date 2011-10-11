@@ -41,10 +41,6 @@ public OnPluginStart()
 	RegAdminCmd("sm_setrule", Command_SetRule, ADMFLAG_ROOT, "Sets (and adds if missing) the value of an entry in the Master Server Rules response.");
 	RegAdminCmd("sm_clearrules", Command_ClearRules, ADMFLAG_ROOT, "Removes all the entries in the Master Server Rules response.");
 
-	RegAdminCmd("sm_addmasterserver", Command_AddMasterServer, ADMFLAG_ROOT, "Adds an entry to the server's list of Master Servers to use (DNS resolution is performed).");
-	RegAdminCmd("sm_removemasterserver", Command_RemoveMasterServer, ADMFLAG_ROOT, "Removes an entry from the server's list of Master Servers to use.");
-	RegAdminCmd("sm_printmasterservers", Command_ListMasterServers, ADMFLAG_ROOT, "Lists all the Master Servers the server is currently using.");
-
 	RegAdminCmd("sm_printstat", Command_PrintStat, ADMFLAG_ROOT, "Prints the value of a stat for a client.");
 	RegAdminCmd("sm_printachievement", Command_PrintAchievement, ADMFLAG_ROOT, "Prints whether or not a client has earned an achievement.");
 
@@ -198,50 +194,6 @@ public Action:Command_ClearRules(client, args)
 	Steam_ClearRules();
 	ReplyToCommand(client, "[SM] Rules Cleared.");
 
-	return Plugin_Handled;
-}
-
-public Action:Command_AddMasterServer(client, args)
-{
-	if (args != 1)
-	{
-		ReplyToCommand(client, "[SM] Usage: sm_addmasterserver <address>");
-		return Plugin_Handled;
-	}
-
-	new String:arg1[32];
-	GetCmdArg(1, arg1, sizeof(arg1));
-
-	ReplyToCommand(client, "[SM] Server %s.", Steam_AddMasterServer(arg1)?"added":"not added");
-	return Plugin_Handled;
-}
-
-public Action:Command_RemoveMasterServer(client, args)
-{
-	if (args != 1)
-	{
-		ReplyToCommand(client, "[SM] Usage: sm_removemasterserver <address>");
-		return Plugin_Handled;
-	}
-
-	new String:arg1[32];
-	GetCmdArg(1, arg1, sizeof(arg1));
-
-	ReplyToCommand(client, "[SM] Server %s.", Steam_RemoveMasterServer(arg1)?"removed":"not removed");
-	return Plugin_Handled;
-}
-
-public Action:Command_ListMasterServers(client, args)
-{
-	new iCount = Steam_GetNumMasterServers();
-	new String:serverAddress[64];
-
-	for (new i = 0; i < iCount; i++)
-	{
-		Steam_GetMasterServerAddress(i, serverAddress, 64);
-		ReplyToCommand(client, "[SM] %d: %s", (i + 1), serverAddress);
-	}
-	
 	return Plugin_Handled;
 }
 
