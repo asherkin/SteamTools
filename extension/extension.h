@@ -53,6 +53,9 @@ class ISteamUtils: public ISteamUtils005 {};
 class ISteamGameServerStats: public ISteamGameServerStats001 {};
 #define STEAMGAMESERVERSTATS_INTERFACE_VERSION STEAMGAMESERVERSTATS_INTERFACE_VERSION_001
 
+class ISteamHTTP: public ISteamHTTP001 {};
+#define STEAMHTTP_INTERFACE_VERSION STEAMHTTP_INTERFACE_VERSION_001
+
 /**
  * @brief Sample implementation of the SDK Extension.
  * Note: Uncomment one of the pre-defined virtual functions in order to use it.

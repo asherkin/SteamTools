@@ -42,7 +42,7 @@
 #error This extension is only supported on Windows and Linux.
 #endif
 
-#if (SOURCE_ENGINE != SE_ORANGEBOXVALVE) && (SOURCE_ENGINE != SE_ALIENSWARM)
+#if (SOURCE_ENGINE != SE_ORANGEBOXVALVE)
 #error Unsupported SDK Version
 #endif
 
@@ -87,6 +87,7 @@ IFileSystem *g_pFullFileSystem = NULL;
 ISteamGameServer *g_pSteamGameServer = NULL;
 ISteamUtils *g_pSteamUtils = NULL;
 ISteamGameServerStats *g_pSteamGameServerStats = NULL;
+ISteamHTTP *g_pSteamHTTP = NULL;
 
 CSteamID g_CustomSteamID = k_steamIDNil;
 SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
@@ -166,6 +167,7 @@ void Hook_GameServerSteamAPIActivated(void)
 	g_pSteamGameServer = (ISteamGameServer *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMGAMESERVER_INTERFACE_VERSION);
 	g_pSteamUtils = (ISteamUtils *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMUTILS_INTERFACE_VERSION);
 	g_pSteamGameServerStats = (ISteamGameServerStats *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamUser(), STEAMGAMESERVERSTATS_INTERFACE_VERSION);
+	g_pSteamHTTP = (ISteamHTTP *)client->GetISteamGenericInterface(g_GameServerSteamUser(), g_GameServerSteamPipe(), STEAMHTTP_INTERFACE_VERSION);
 
 	if (!CheckInterfaces())
 		return;
@@ -444,7 +446,13 @@ bool CheckInterfaces()
 		g_pSM->LogError(myself, "Could not find interface %s", STEAMGAMESERVERSTATS_INTERFACE_VERSION);
 		g_SteamLoadFailed = true;
 	}
-		
+
+	if (!g_pSteamHTTP)
+	{
+		g_pSM->LogError(myself, "Could not find interface %s", STEAMHTTP_INTERFACE_VERSION);
+		g_SteamLoadFailed = true;
+	}
+	
 	if (g_SteamLoadFailed)
 	{
 		if (g_ThinkHookID != 0)
@@ -1064,6 +1072,7 @@ static cell_t SetGameDescription(IPluginContext *pContext, const cell_t *params)
 	pContext->LocalToString(params[1], &strGameDesc);
 
 	g_pSteamGameServer->SetGameDescription(strGameDesc);
+	return 0;
 }
 
 static cell_t RequestStats(IPluginContext *pContext, const cell_t *params)
