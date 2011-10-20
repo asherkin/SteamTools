@@ -143,6 +143,7 @@ native Steam_GetNumMasterServers();
 #pragma deprecated No longer operational
 native Steam_GetMasterServerAddress(server, String:serverAddress[], maxlength);
 
+native Steam_SetGameDescription(String:gameDescription[]);
 
 native Steam_RequestStats(client);
 forward Steam_StatsReceived(client);

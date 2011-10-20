@@ -41,6 +41,8 @@ public OnPluginStart()
 	RegAdminCmd("sm_setrule", Command_SetRule, ADMFLAG_ROOT, "Sets (and adds if missing) the value of an entry in the Master Server Rules response.");
 	RegAdminCmd("sm_clearrules", Command_ClearRules, ADMFLAG_ROOT, "Removes all the entries in the Master Server Rules response.");
 
+	RegAdminCmd("sm_setgamedescription", Command_SetGameDescription, ADMFLAG_ROOT, "Sets the game description shown in the server browser.");
+
 	RegAdminCmd("sm_printstat", Command_PrintStat, ADMFLAG_ROOT, "Prints the value of a stat for a client.");
 	RegAdminCmd("sm_printachievement", Command_PrintAchievement, ADMFLAG_ROOT, "Prints whether or not a client has earned an achievement.");
 
@@ -193,6 +195,24 @@ public Action:Command_ClearRules(client, args)
 {
 	Steam_ClearRules();
 	ReplyToCommand(client, "[SM] Rules Cleared.");
+
+	return Plugin_Handled;
+}
+
+public Action:Command_SetGameDescription(client, args)
+{
+	if (args != 2)
+	{
+		ReplyToCommand(client, "[SM] Usage: sm_setgamedescription <description>");
+		return Plugin_Handled;
+	}
+
+	new String:arg1[32];
+
+	GetCmdArg(1, arg1, sizeof(arg1));
+ 
+	Steam_SetGameDescription(arg1);
+	ReplyToCommand(client, "[SM] Game Description Set.");
 
 	return Plugin_Handled;
 }

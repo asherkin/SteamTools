@@ -1055,6 +1055,17 @@ static cell_t GetMasterServerAddress(IPluginContext *pContext, const cell_t *par
 	return pContext->ThrowNativeError("GetMasterServerAddress function no longer operational.");
 }
 
+static cell_t SetGameDescription(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamGameServer)
+		return 0;
+
+	char *strGameDesc;
+	pContext->LocalToString(params[1], &strGameDesc);
+
+	g_pSteamGameServer->SetGameDescription(strGameDesc);
+}
+
 static cell_t RequestStats(IPluginContext *pContext, const cell_t *params)
 {
 	if (!g_pSteamGameServerStats)
@@ -1394,6 +1405,7 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_RemoveMasterServer",			RemoveMasterServer },
 	{ "Steam_GetNumMasterServers",			GetNumMasterServers },
 	{ "Steam_GetMasterServerAddress",		GetMasterServerAddress },
+	{ "Steam_SetGameDescription",			SetGameDescription },
 	{ "Steam_RequestStats",					RequestStats },
 	{ "Steam_GetStat",						GetStatInt },
 	{ "Steam_GetStatFloat",					GetStatFloat },
