@@ -72,6 +72,7 @@ SMEXT_LINK(&g_SteamTools);
 
 SH_DECL_HOOK1_void(IServerGameDLL, Think, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK0_void(IServerGameDLL, GameServerSteamAPIActivated, SH_NOATTRIB, 0);
+SH_DECL_HOOK0_void(IServerGameDLL, GameServerSteamAPIShutdown, SH_NOATTRIB, 0);
 
 SH_DECL_HOOK0(ISteamGameServer, WasRestartRequested, SH_NOATTRIB, 0, bool);
 
@@ -127,6 +128,7 @@ FreeLastCallbackFn FreeLastCallback;
 
 int g_ThinkHookID = 0;
 int g_GameServerSteamAPIActivatedHookID = 0;
+int g_GameServerSteamAPIShutdownHookID = 0;
 
 int g_WasRestartRequestedHookID = 0;
 
@@ -148,6 +150,7 @@ IForward *g_pForwardClientReceivedStats = NULL;
 IForward *g_pForwardClientUnloadedStats = NULL;
 
 IForward *g_pForwardLoaded = NULL;
+IForward *g_pForwardShutdown = NULL;
 
 void Hook_GameServerSteamAPIActivated(void)
 {
@@ -188,9 +191,9 @@ void Hook_GameServerSteamAPIActivated(void)
 
 	g_SMAPI->ConPrintf("[STEAMTOOLS] Loading complete.\n");
 
-	g_pForwardLoaded->Execute(NULL);
-
 	g_SteamServersConnected = g_pSteamGameServer->BLoggedOn();
+
+	g_pForwardLoaded->Execute(NULL);
 
 	if (g_SteamServersConnected)
 	{
@@ -206,6 +209,51 @@ void Hook_GameServerSteamAPIActivated(void)
 		SH_REMOVE_HOOK_ID(g_GameServerSteamAPIActivatedHookID);
 		g_GameServerSteamAPIActivatedHookID = 0;
 	}
+	g_GameServerSteamAPIShutdownHookID = SH_ADD_HOOK(IServerGameDLL, GameServerSteamAPIShutdown, g_pServerGameDLL, SH_STATIC(Hook_GameServerSteamAPIShutdown), true);
+}
+
+void Hook_GameServerSteamAPIShutdown(void)
+{
+	if (g_ThinkHookID != 0)
+	{
+		SH_REMOVE_HOOK_ID(g_ThinkHookID);
+		g_ThinkHookID = 0;
+	}
+
+	g_GameServerSteamPipe = NULL;
+	g_GameServerSteamUser = NULL;
+
+	g_pSteamGameServer = NULL;
+	g_pSteamUtils = NULL;
+	g_pSteamGameServerStats = NULL;
+	g_pSteamHTTP = NULL;
+
+	if (g_WasRestartRequestedHookID != 0)
+	{
+		SH_REMOVE_HOOK_ID(g_WasRestartRequestedHookID);
+		g_WasRestartRequestedHookID = 0;
+	}
+	if (g_BeginAuthSessionHookID != 0)
+	{
+		SH_REMOVE_HOOK_ID(g_BeginAuthSessionHookID);
+		g_BeginAuthSessionHookID = 0;
+	}
+	if (g_EndAuthSessionHookID != 0)
+	{
+		SH_REMOVE_HOOK_ID(g_EndAuthSessionHookID);
+		g_EndAuthSessionHookID = 0;
+	}
+
+	g_SteamServersConnected = false;
+
+	g_pForwardShutdown->Execute(NULL);
+
+	if (g_GameServerSteamAPIShutdownHookID != 0)
+	{
+		SH_REMOVE_HOOK_ID(g_GameServerSteamAPIShutdownHookID);
+		g_GameServerSteamAPIShutdownHookID = 0;
+	}
+	g_GameServerSteamAPIActivatedHookID = SH_ADD_HOOK(IServerGameDLL, GameServerSteamAPIActivated, g_pServerGameDLL, SH_STATIC(Hook_GameServerSteamAPIActivated), true);
 }
 
 void Hook_Think(bool finalTick)
@@ -268,7 +316,7 @@ void Hook_Think(bool finalTick)
 					g_pForwardGameplayStats->PushCell(GameplayStats->m_unTotalMinutesPlayed);
 					g_pForwardGameplayStats->Execute(NULL);
 				} else {
-					if (GameplayStats->m_eResult != k_EResultFail || g_pSteamGameServer->BLoggedOn())
+					if (GameplayStats->m_eResult != k_EResultFail || (g_pSteamGameServer && g_pSteamGameServer->BLoggedOn()))
 						g_pSM->LogError(myself, "Server Gameplay Stats received with an unexpected eResult. (eResult = %d)", GameplayStats->m_eResult);
 				}
 				FreeLastCallback(g_GameServerSteamPipe());
@@ -645,6 +693,7 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	g_pForwardClientUnloadedStats = g_pForwards->CreateForward("Steam_StatsUnloaded", ET_Ignore, 1, NULL, Param_Cell);
 
 	g_pForwardLoaded = g_pForwards->CreateForward("Steam_FullyLoaded", ET_Ignore, 0, NULL);
+	g_pForwardShutdown = g_pForwards->CreateForward("Steam_Shutdown", ET_Ignore, 0, NULL);
 
 	g_SMAPI->ConPrintf("[STEAMTOOLS] Initial loading stage complete...\n");
 
@@ -923,6 +972,11 @@ void SteamTools::SDK_OnUnload()
 	{
 		SH_REMOVE_HOOK_ID(g_GameServerSteamAPIActivatedHookID);
 		g_GameServerSteamAPIActivatedHookID = 0;
+	}
+	if (g_GameServerSteamAPIShutdownHookID != 0)
+	{
+		SH_REMOVE_HOOK_ID(g_GameServerSteamAPIShutdownHookID);
+		g_GameServerSteamAPIShutdownHookID = 0;
 	}
 	if (g_WasRestartRequestedHookID != 0)
 	{

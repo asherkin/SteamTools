@@ -12,6 +12,7 @@
  * @noreturn
  */
 forward Steam_FullyLoaded();
+forward Steam_Shutdown();
 
 
 /**

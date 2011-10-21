@@ -137,6 +137,7 @@ public: //IPluginsListener
 
 void Hook_Think(bool finalTick);
 void Hook_GameServerSteamAPIActivated(void);
+void Hook_GameServerSteamAPIShutdown(void);
 
 bool Hook_WasRestartRequested();
 
