@@ -92,6 +92,15 @@ ISteamHTTP *g_pSteamHTTP = NULL;
 CSteamID g_CustomSteamID = k_steamIDNil;
 SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
+CUtlVector<SteamAPICall_t> g_HTTPRequestSteamAPICalls;
+
+union HTTPRequestCompletedContextPack {
+	uint64 ulContextValue;
+	struct {
+		sp_context_t *pContext;
+		funcid_t uPluginFunction;
+	};
+};
 
 bool MapLessFunc(const uint32 &in1, const uint32 &in2)
 {
@@ -286,11 +295,14 @@ void Hook_Think(bool finalTick)
 		case SteamAPICallCompleted_t::k_iCallback:
 			{
 				if (!g_pSteamUtils)
-					return;
+				{
+					FreeLastCallback(g_GameServerSteamPipe());
+					break;
+				}
 
-				SteamAPICallCompleted_t *APICallComplete = (SteamAPICallCompleted_t *)callbackMsg.m_pubParam;
+				SteamAPICallCompleted_t *APICallCompleted = (SteamAPICallCompleted_t *)callbackMsg.m_pubParam;
 
-				if (APICallComplete->m_hAsyncCall == g_SteamAPICall)
+				if (APICallCompleted->m_hAsyncCall == g_SteamAPICall)
 				{
 					GSReputation_t Reputation;
 					bool bFailed = false;
@@ -316,13 +328,13 @@ void Hook_Think(bool finalTick)
 
 					g_SteamAPICall = k_uAPICallInvalid;
 					FreeLastCallback(g_GameServerSteamPipe());
-				} else if (int elem = g_RequestUserStatsSteamAPICalls.Find(APICallComplete->m_hAsyncCall) != -1) {
+				} else if (int elem = g_RequestUserStatsSteamAPICalls.Find(APICallCompleted->m_hAsyncCall) != -1) {
 					GSStatsReceived_t StatsReceived;
 					bool bFailed = false;
-					g_pSteamUtils->GetAPICallResult(APICallComplete->m_hAsyncCall, &StatsReceived, sizeof(StatsReceived), StatsReceived.k_iCallback, &bFailed);
+					g_pSteamUtils->GetAPICallResult(APICallCompleted->m_hAsyncCall, &StatsReceived, sizeof(StatsReceived), StatsReceived.k_iCallback, &bFailed);
 					if (bFailed)
 					{
-						ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(APICallComplete->m_hAsyncCall);
+						ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(APICallCompleted->m_hAsyncCall);
 						g_pSM->LogError(myself, "Getting stats failed. (ESteamAPICallFailure = %d)", failureReason);
 					} else {
 						if (StatsReceived.m_eResult == k_EResultOK)
@@ -364,6 +376,58 @@ void Hook_Think(bool finalTick)
 						} else {
 							g_pSM->LogError(myself, "Stats for user %s received with an unexpected eResult. (eResult = %d)", StatsReceived.m_steamIDUser.Render(), StatsReceived.m_eResult);
 						}
+					}
+
+					g_RequestUserStatsSteamAPICalls.Remove(elem);
+					FreeLastCallback(g_GameServerSteamPipe());
+				} else if (int elem = g_HTTPRequestSteamAPICalls.Find(APICallCompleted->m_hAsyncCall) != -1) {
+					HTTPRequestCompleted_t HTTPRequestCompleted;
+					bool bFailed = false;
+					g_pSteamUtils->GetAPICallResult(APICallCompleted->m_hAsyncCall, &HTTPRequestCompleted, sizeof(HTTPRequestCompleted), HTTPRequestCompleted.k_iCallback, &bFailed);
+					if (bFailed)
+					{
+						ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(APICallCompleted->m_hAsyncCall);
+						g_pSM->LogError(myself, "HTTP request failed. (ESteamAPICallFailure = %d)", failureReason);
+					} else {
+						if (HTTPRequestCompleted.m_ulContextValue == 0)
+						{
+							g_pSM->LogError(myself, "Unable to find plugin in HTTPRequestCompleted handler. (No context value set)");
+
+							g_RequestUserStatsSteamAPICalls.Remove(elem);
+							FreeLastCallback(g_GameServerSteamPipe());
+							break;
+						}
+
+						HTTPRequestCompletedContextPack contextPack;
+						contextPack.ulContextValue = HTTPRequestCompleted.m_ulContextValue;
+
+						IPlugin *pPlugin = plsys->FindPluginByContext(contextPack.pContext);
+
+						if (!pPlugin)
+						{
+							g_pSM->LogError(myself, "Unable to find plugin in HTTPRequestCompleted handler. (No plugin found matching context)");
+
+							g_RequestUserStatsSteamAPICalls.Remove(elem);
+							FreeLastCallback(g_GameServerSteamPipe());
+							break;
+						}
+
+						IPluginFunction *pFunction = pPlugin->GetBaseContext()->GetFunctionById(contextPack.uPluginFunction);
+
+						if (!pFunction || !pFunction->IsRunnable())
+						{
+							if (!pFunction)
+								g_pSM->LogError(myself, "Unable to find plugin in HTTPRequestCompleted handler. (Function not found in plugin)");
+
+							g_RequestUserStatsSteamAPICalls.Remove(elem);
+							FreeLastCallback(g_GameServerSteamPipe());
+							break;
+						}
+
+						pFunction->PushCell(HTTPRequestCompleted.m_hRequest);
+						pFunction->PushCell(HTTPRequestCompleted.m_bRequestSuccessful);
+						pFunction->PushCell(HTTPRequestCompleted.m_eStatusCode);
+						pFunction->Execute(NULL);
 					}
 
 					g_RequestUserStatsSteamAPICalls.Remove(elem);
@@ -1399,36 +1463,290 @@ static cell_t CSteamIDToGroupID(IPluginContext *pContext, const cell_t *params)
 	}
 }
 
+static cell_t CreateHTTPRequest(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	EHTTPMethod eHttpRequestMethod = (EHTTPMethod)params[1];
+
+	char *pchAbsoluteURL;
+	pContext->LocalToString(params[2], &pchAbsoluteURL);
+
+	return g_pSteamHTTP->CreateHTTPRequest(eHttpRequestMethod, pchAbsoluteURL);
+}
+
+static cell_t SetHTTPRequestNetworkActivityTimeout(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+	uint32 unTimeoutSeconds = params[2];
+
+	if (!g_pSteamHTTP->SetHTTPRequestNetworkActivityTimeout(hRequest, unTimeoutSeconds))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid or already sent");
+
+	return 0;
+}
+
+static cell_t SetHTTPRequestHeaderValue(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	char *pchHeaderName;
+	pContext->LocalToString(params[2], &pchHeaderName);
+
+	char *pchHeaderValue;
+	pContext->LocalToString(params[3], &pchHeaderValue);
+
+	if (!g_pSteamHTTP->SetHTTPRequestHeaderValue(hRequest, pchHeaderName, pchHeaderValue))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid or already sent");
+
+	return 0;
+}
+
+static cell_t SetHTTPRequestGetOrPostParameter(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	char *pchParamName;
+	pContext->LocalToString(params[2], &pchParamName);
+
+	char *pchParamValue;
+	pContext->LocalToString(params[3], &pchParamValue);
+
+	if (!g_pSteamHTTP->SetHTTPRequestGetOrPostParameter(hRequest, pchParamName, pchParamValue))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid or already sent");
+
+	return 0;
+}
+
+static cell_t SendHTTPRequest(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	HTTPRequestCompletedContextPack contextPack;
+	contextPack.pContext = pContext->GetContext();
+	contextPack.uPluginFunction = params[2];
+
+	if (!g_pSteamHTTP->SetHTTPRequestContextValue(hRequest, contextPack.ulContextValue))
+		return pContext->ThrowNativeError("Unable to send HTTP request, couldn't pack context information");
+
+	SteamAPICall_t hAPICall;
+	if (!g_pSteamHTTP->SendHTTPRequest(hRequest, &hAPICall))
+		return pContext->ThrowNativeError("Unable to send HTTP request, check handle is valid and that there is a network connection present");
+
+	g_HTTPRequestSteamAPICalls.AddToTail(hAPICall);
+	return 0;
+}
+
+static cell_t DeferHTTPRequest(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	if (!g_pSteamHTTP->DeferHTTPRequest(hRequest))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid or not yet sent");
+
+	return 0;
+}
+
+static cell_t PrioritizeHTTPRequest(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	if (!g_pSteamHTTP->PrioritizeHTTPRequest(hRequest))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid or not yet sent");
+
+	return 0;
+}
+
+static cell_t GetHTTPResponseHeaderSize(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	char *pchHeaderName;
+	pContext->LocalToString(params[2], &pchHeaderName);
+
+	uint32 unResponseHeaderSize;
+	
+	if (!g_pSteamHTTP->GetHTTPResponseHeaderSize(hRequest, pchHeaderName, &unResponseHeaderSize))
+		return -1;
+
+	return unResponseHeaderSize;
+}
+
+static cell_t GetHTTPResponseHeaderValue(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	char *pchHeaderName;
+	pContext->LocalToString(params[2], &pchHeaderName);
+
+	uint32 unBufferSize = params[4];
+	char *pHeaderValueBuffer = new char[unBufferSize];
+
+	if (!g_pSteamHTTP->GetHTTPResponseHeaderValue(hRequest, pchHeaderName, (uint8 *)pHeaderValueBuffer, unBufferSize))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid, not yet sent, invalid buffer size or header not present");
+
+	pContext->StringToLocal(params[3], unBufferSize, pHeaderValueBuffer);
+	return 0;
+}
+
+static cell_t GetHTTPResponseBodySize(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	uint32 unBodySize;
+
+	if (!g_pSteamHTTP->GetHTTPResponseBodySize(hRequest, &unBodySize))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid or not yet sent");
+
+	return unBodySize;
+}
+
+static cell_t GetHTTPResponseBodyData(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	uint32 unBufferSize = params[3];
+	char *pBodyDataBuffer = new char[unBufferSize];
+
+	if (!g_pSteamHTTP->GetHTTPResponseBodyData(hRequest, (uint8 *)pBodyDataBuffer, unBufferSize))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid, not yet sent or invalid buffer size");
+
+	pContext->StringToLocal(params[2], unBufferSize, pBodyDataBuffer);
+	return 0;
+}
+
+static cell_t WriteHTTPResponseBodyData(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	uint32 unBodySize;
+	if (!g_pSteamHTTP->GetHTTPResponseBodySize(hRequest, &unBodySize))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid or not yet sent");
+
+	uint8 *pBodyDataBuffer = new uint8[unBodySize];
+	if (!g_pSteamHTTP->GetHTTPResponseBodyData(hRequest, pBodyDataBuffer, unBodySize))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid, not yet sent or invalid buffer size");
+
+	char *pchFilePath;
+	pContext->LocalToString(params[2], &pchFilePath);
+
+	FileHandle_t hDataFile = g_pFullFileSystem->Open(pchFilePath, "wb", "MOD");
+	if (!hDataFile)
+		return pContext->ThrowNativeError("Unable to open %s for writing", pchFilePath);
+
+	g_pFullFileSystem->Write(pBodyDataBuffer, unBodySize, hDataFile);
+
+	g_pFullFileSystem->Close(hDataFile);
+
+	return 0;
+}
+
+static cell_t ReleaseHTTPRequest(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	if (!g_pSteamHTTP->ReleaseHTTPRequest(hRequest))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid");
+
+	return 0;
+}
+
+static cell_t GetHTTPDownloadProgressPercent(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+
+	float flPercent;
+
+	if (!g_pSteamHTTP->GetHTTPDownloadProgressPct(hRequest, &flPercent))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid or not yet sent");
+
+	return sp_ftoc(flPercent);
+}
+
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
-	{ "Steam_RequestGroupStatus",			RequestGroupStatus },
-	{ "Steam_RequestGameplayStats",			RequestGameplayStats },
-	{ "Steam_RequestServerReputation",		RequestServerReputation },
-	{ "Steam_ForceHeartbeat",				ForceHeartbeat },
-	{ "Steam_IsVACEnabled",					IsVACEnabled },
-	{ "Steam_IsConnected",					IsConnected },
-	{ "Steam_GetPublicIP",					GetPublicIP },
-	{ "Steam_SetRule",						SetKeyValue },
-	{ "Steam_ClearRules",					ClearAllKeyValues },
-	{ "Steam_AddMasterServer",				AddMasterServer },
-	{ "Steam_RemoveMasterServer",			RemoveMasterServer },
-	{ "Steam_GetNumMasterServers",			GetNumMasterServers },
-	{ "Steam_GetMasterServerAddress",		GetMasterServerAddress },
-	{ "Steam_SetGameDescription",			SetGameDescription },
-	{ "Steam_RequestStats",					RequestStats },
-	{ "Steam_GetStat",						GetStatInt },
-	{ "Steam_GetStatFloat",					GetStatFloat },
-	{ "Steam_IsAchieved",					IsAchieved },
-	{ "Steam_GetNumClientSubscriptions",	GetNumClientSubscriptions },
-	{ "Steam_GetClientSubscription",		GetClientSubscription },
-	{ "Steam_GetNumClientDLCs",				GetNumClientDLCs },
-	{ "Steam_GetClientDLC",					GetClientDLC },
-	{ "Steam_GetCSteamIDForClient",			GetCSteamIDForClient },
-	{ "Steam_RenderedIDToCSteamID",			RenderedIDToCSteamID },
-	{ "Steam_CSteamIDToRenderedID",			CSteamIDToRenderedID },
-	{ "Steam_SetCustomSteamID",				SetCustomSteamID },
-	{ "Steam_GetCustomSteamID",				GetCustomSteamID },
-	{ "Steam_GroupIDToCSteamID",			GroupIDToCSteamID },
-	{ "Steam_CSteamIDToGroupID",			CSteamIDToGroupID },
-	{ NULL,									NULL }
+	{ "Steam_RequestGroupStatus",					RequestGroupStatus },
+	{ "Steam_RequestGameplayStats",					RequestGameplayStats },
+	{ "Steam_RequestServerReputation",				RequestServerReputation },
+	{ "Steam_ForceHeartbeat",						ForceHeartbeat },
+	{ "Steam_IsVACEnabled",							IsVACEnabled },
+	{ "Steam_IsConnected",							IsConnected },
+	{ "Steam_GetPublicIP",							GetPublicIP },
+	{ "Steam_SetRule",								SetKeyValue },
+	{ "Steam_ClearRules",							ClearAllKeyValues },
+	{ "Steam_AddMasterServer",						AddMasterServer },
+	{ "Steam_RemoveMasterServer",					RemoveMasterServer },
+	{ "Steam_GetNumMasterServers",					GetNumMasterServers },
+	{ "Steam_GetMasterServerAddress",				GetMasterServerAddress },
+	{ "Steam_SetGameDescription",					SetGameDescription },
+	{ "Steam_RequestStats",							RequestStats },
+	{ "Steam_GetStat",								GetStatInt },
+	{ "Steam_GetStatFloat",							GetStatFloat },
+	{ "Steam_IsAchieved",							IsAchieved },
+	{ "Steam_GetNumClientSubscriptions",			GetNumClientSubscriptions },
+	{ "Steam_GetClientSubscription",				GetClientSubscription },
+	{ "Steam_GetNumClientDLCs",						GetNumClientDLCs },
+	{ "Steam_GetClientDLC",							GetClientDLC },
+	{ "Steam_GetCSteamIDForClient",					GetCSteamIDForClient },
+	{ "Steam_RenderedIDToCSteamID",					RenderedIDToCSteamID },
+	{ "Steam_CSteamIDToRenderedID",					CSteamIDToRenderedID },
+	{ "Steam_SetCustomSteamID",						SetCustomSteamID },
+	{ "Steam_GetCustomSteamID",						GetCustomSteamID },
+	{ "Steam_GroupIDToCSteamID",					GroupIDToCSteamID },
+	{ "Steam_CSteamIDToGroupID",					CSteamIDToGroupID },
+	{ "Steam_CreateHTTPRequest",					CreateHTTPRequest },
+	{ "Steam_SetHTTPRequestNetworkActivityTimeout",	SetHTTPRequestNetworkActivityTimeout },
+	{ "Steam_SetHTTPRequestHeaderValue",			SetHTTPRequestHeaderValue },
+	{ "Steam_SetHTTPRequestGetOrPostParameter",		SetHTTPRequestGetOrPostParameter },
+	{ "Steam_SendHTTPRequest",						SendHTTPRequest },
+	{ "Steam_DeferHTTPRequest",						DeferHTTPRequest },
+	{ "Steam_PrioritizeHTTPRequest",				PrioritizeHTTPRequest },
+	{ "Steam_GetHTTPResponseHeaderSize",			GetHTTPResponseHeaderSize },
+	{ "Steam_GetHTTPResponseHeaderValue",			GetHTTPResponseHeaderValue },
+	{ "Steam_GetHTTPResponseBodySize",				GetHTTPResponseBodySize },
+	{ "Steam_GetHTTPResponseBodyData",				GetHTTPResponseBodyData },
+	{ "Steam_WriteHTTPResponseBodyData",			WriteHTTPResponseBodyData },
+	{ "Steam_ReleaseHTTPRequest",					ReleaseHTTPRequest },
+	{ "Steam_GetHTTPDownloadProgressPercent",		GetHTTPDownloadProgressPercent },
+	{ NULL,											NULL }
 };
