@@ -201,7 +201,7 @@ public Action:Command_ClearRules(client, args)
 
 public Action:Command_SetGameDescription(client, args)
 {
-	if (args != 2)
+	if (args != 1)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_setgamedescription <description>");
 		return Plugin_Handled;
