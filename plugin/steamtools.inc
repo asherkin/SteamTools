@@ -279,7 +279,7 @@ native Steam_GetHTTPResponseHeaderSize(HTTPRequestHandle:HTTPRequest, const Stri
 native Steam_GetHTTPResponseHeaderValue(HTTPRequestHandle:HTTPRequest, const String:headerName[], String:headerValueBuffer[], bufferSize);
 native Steam_GetHTTPResponseBodySize(HTTPRequestHandle:HTTPRequest);
 native Steam_GetHTTPResponseBodyData(HTTPRequestHandle:HTTPRequest, String:bodyDataBuffer[], bufferSize);
-native Steam_WriteHTTPResponseBodyData(HTTPRequestHandle:HTTPRequest, const String:filePath[]);
+native Steam_WriteHTTPResponseBody(HTTPRequestHandle:HTTPRequest, const String:filePath[]);
 native Steam_ReleaseHTTPRequest(HTTPRequestHandle:HTTPRequest);
 native Float:Steam_GetHTTPDownloadProgressPercent(HTTPRequestHandle:HTTPRequest);
 

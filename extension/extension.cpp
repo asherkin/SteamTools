@@ -1646,7 +1646,7 @@ static cell_t GetHTTPResponseBodyData(IPluginContext *pContext, const cell_t *pa
 	return 0;
 }
 
-static cell_t WriteHTTPResponseBodyData(IPluginContext *pContext, const cell_t *params)
+static cell_t WriteHTTPResponseBody(IPluginContext *pContext, const cell_t *params)
 {
 	if (!g_pSteamHTTP)
 		return 0;
@@ -1745,7 +1745,7 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_GetHTTPResponseHeaderValue",			GetHTTPResponseHeaderValue },
 	{ "Steam_GetHTTPResponseBodySize",				GetHTTPResponseBodySize },
 	{ "Steam_GetHTTPResponseBodyData",				GetHTTPResponseBodyData },
-	{ "Steam_WriteHTTPResponseBodyData",			WriteHTTPResponseBodyData },
+	{ "Steam_WriteHTTPResponseBody",			WriteHTTPResponseBody },
 	{ "Steam_ReleaseHTTPRequest",					ReleaseHTTPRequest },
 	{ "Steam_GetHTTPDownloadProgressPercent",		GetHTTPDownloadProgressPercent },
 	{ NULL,											NULL }
