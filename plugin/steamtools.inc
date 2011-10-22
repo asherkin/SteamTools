@@ -267,13 +267,13 @@ enum HTTPStatusCode
 	HTTPStatusCode_HTTPVersionNotSupported =		505,
 };
 
-functag public HTTPRequestComplete(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful, HTTPStatusCode:statusCode);
+functag public HTTPRequestComplete(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful, HTTPStatusCode:statusCode, any:contextData);
 
 native HTTPRequestHandle:Steam_CreateHTTPRequest(HTTPMethod:HTTPRequestMethod, const String:absoluteURL[]);
 native Steam_SetHTTPRequestNetworkActivityTimeout(HTTPRequestHandle:HTTPRequest, timeoutSeconds);
 native Steam_SetHTTPRequestHeaderValue(HTTPRequestHandle:HTTPRequest, const String:headerName[], const String:headerValue[]);
 native Steam_SetHTTPRequestGetOrPostParameter(HTTPRequestHandle:HTTPRequest, const String:paramName[], const String:paramValue[]);
-native bool:Steam_SendHTTPRequest(HTTPRequestHandle:HTTPRequest, HTTPRequestComplete:callbackFunction);
+native bool:Steam_SendHTTPRequest(HTTPRequestHandle:HTTPRequest, HTTPRequestComplete:callbackFunction, any:contextData = 0);
 native Steam_DeferHTTPRequest(HTTPRequestHandle:HTTPRequest);
 native Steam_PrioritizeHTTPRequest(HTTPRequestHandle:HTTPRequest);
 native Steam_GetHTTPResponseHeaderSize(HTTPRequestHandle:HTTPRequest, const String:headerName[]);

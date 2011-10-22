@@ -95,11 +95,17 @@ SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
 CUtlVector<SteamAPICall_t> g_HTTPRequestSteamAPICalls;
 
+struct HTTPRequestCompletedContextFunction {
+	sp_context_t *pContext;
+	funcid_t uPluginFunction;
+	bool bHasContext;
+};
+
 union HTTPRequestCompletedContextPack {
 	uint64 ulContextValue;
 	struct {
-		sp_context_t *pContext;
-		funcid_t uPluginFunction;
+		HTTPRequestCompletedContextFunction *pCallbackFunction;
+		cell_t iPluginContextValue;
 	};
 };
 
@@ -342,7 +348,7 @@ void Hook_Think(bool finalTick)
 			HTTPRequestCompletedContextPack contextPack;
 			contextPack.ulContextValue = HTTPRequestCompleted.m_ulContextValue;
 
-			IPlugin *pPlugin = plsys->FindPluginByContext(contextPack.pContext);
+			IPlugin *pPlugin = plsys->FindPluginByContext(contextPack.pCallbackFunction->pContext);
 
 			if (!pPlugin)
 			{
@@ -352,7 +358,7 @@ void Hook_Think(bool finalTick)
 				continue;
 			}
 
-			IPluginFunction *pFunction = pPlugin->GetBaseContext()->GetFunctionById(contextPack.uPluginFunction);
+			IPluginFunction *pFunction = pPlugin->GetBaseContext()->GetFunctionById(contextPack.pCallbackFunction->uPluginFunction);
 
 			if (!pFunction || !pFunction->IsRunnable())
 			{
@@ -366,7 +372,13 @@ void Hook_Think(bool finalTick)
 			pFunction->PushCell(HTTPRequestCompleted.m_hRequest);
 			pFunction->PushCell(HTTPRequestCompleted.m_bRequestSuccessful);
 			pFunction->PushCell(HTTPRequestCompleted.m_eStatusCode);
+
+			if (contextPack.pCallbackFunction->bHasContext)
+				pFunction->PushCell(contextPack.iPluginContextValue);
+
 			pFunction->Execute(NULL);
+
+			delete contextPack.pCallbackFunction;
 
 			g_HTTPRequestSteamAPICalls.Remove(i);
 		}
@@ -1630,8 +1642,16 @@ static cell_t SendHTTPRequest(IPluginContext *pContext, const cell_t *params)
 	HTTPRequestHandle hRequest = params[1];
 
 	HTTPRequestCompletedContextPack contextPack;
-	contextPack.pContext = pContext->GetContext();
-	contextPack.uPluginFunction = params[2];
+	contextPack.pCallbackFunction = new HTTPRequestCompletedContextFunction;
+
+	contextPack.pCallbackFunction->pContext = pContext->GetContext();
+	contextPack.pCallbackFunction->uPluginFunction = params[2];
+
+	if (params[0] >= 3)
+	{
+		contextPack.pCallbackFunction->bHasContext = true;
+		contextPack.iPluginContextValue = params[3];
+	}
 
 	if (!g_pSteamHTTP->SetHTTPRequestContextValue(hRequest, contextPack.ulContextValue))
 		return pContext->ThrowNativeError("Unable to send HTTP request, couldn't pack context information");
