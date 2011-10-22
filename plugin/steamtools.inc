@@ -267,7 +267,11 @@ enum HTTPStatusCode
 	HTTPStatusCode_HTTPVersionNotSupported =		505,
 };
 
-functag public HTTPRequestComplete(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful, HTTPStatusCode:statusCode, any:contextData);
+funcenum HTTPRequestComplete
+{
+	public(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful, HTTPStatusCode:statusCode),
+	public(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful, HTTPStatusCode:statusCode, any:contextData),
+};
 
 native HTTPRequestHandle:Steam_CreateHTTPRequest(HTTPMethod:HTTPRequestMethod, const String:absoluteURL[]);
 native Steam_SetHTTPRequestNetworkActivityTimeout(HTTPRequestHandle:HTTPRequest, timeoutSeconds);
