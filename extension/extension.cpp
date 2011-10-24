@@ -96,7 +96,7 @@ CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
 CUtlVector<SteamAPICall_t> g_HTTPRequestSteamAPICalls;
 
 struct HTTPRequestCompletedContextFunction {
-	sp_context_t *pContext;
+	IPluginContext *pContext;
 	funcid_t uPluginFunction;
 	bool bHasContext;
 };
@@ -269,6 +269,27 @@ void Hook_GameServerSteamAPIShutdown(void)
 	g_GameServerSteamAPIActivatedHookID = SH_ADD_HOOK(IServerGameDLL, GameServerSteamAPIActivated, g_pServerGameDLL, SH_STATIC(Hook_GameServerSteamAPIActivated), true);
 }
 
+IPlugin *FindPluginByContext(IPluginContext *pContext) {
+	IPlugin *pFoundPlugin;
+
+	IPluginIterator *pPluginIterator = plsys->GetPluginIterator();
+	while (pPluginIterator->MorePlugins())
+	{
+		IPlugin *pPlugin = pPluginIterator->GetPlugin();
+
+		if (pPlugin->GetBaseContext() == pContext)
+		{
+			pFoundPlugin = pPlugin;
+			break;
+		}
+
+		pPluginIterator->NextPlugin();
+	}
+	pPluginIterator->Release();
+
+	return pFoundPlugin;
+}
+
 void Hook_Think(bool finalTick)
 {
 	if (g_pSteamUtils)
@@ -277,7 +298,7 @@ void Hook_Think(bool finalTick)
 		{
 			bool bFailed = false;
 			bool bComplete = g_pSteamUtils->IsAPICallCompleted(g_SteamAPICall, &bFailed);
-			META_CONPRINTF("[STEAMTOOLS] (Rep) %llu: Completed: %s (Failed: %s)\n", g_SteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
+			//META_CONPRINTF("[STEAMTOOLS] (Rep) %llu: Completed: %s (Failed: %s)\n", g_SteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
 
 			if (!bComplete)
 				goto end_of_rep_handler;
@@ -320,7 +341,7 @@ void Hook_Think(bool finalTick)
 
 			bool bFailed = false;
 			bool bComplete = g_pSteamUtils->IsAPICallCompleted(hSteamAPICall, &bFailed);
-			META_CONPRINTF("[STEAMTOOLS] (HTTP) %llu: Completed: %s (Failed: %s)\n", hSteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
+			//META_CONPRINTF("[STEAMTOOLS] (HTTP) %llu: Completed: %s (Failed: %s)\n", hSteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
 
 			if (!bComplete)
 				continue;
@@ -348,7 +369,7 @@ void Hook_Think(bool finalTick)
 			HTTPRequestCompletedContextPack contextPack;
 			contextPack.ulContextValue = HTTPRequestCompleted.m_ulContextValue;
 
-			IPlugin *pPlugin = plsys->FindPluginByContext(contextPack.pCallbackFunction->pContext);
+			IPlugin *pPlugin = FindPluginByContext(contextPack.pCallbackFunction->pContext);
 
 			if (!pPlugin)
 			{
@@ -389,7 +410,7 @@ void Hook_Think(bool finalTick)
 
 			bool bFailed = false;
 			bool bComplete = g_pSteamUtils->IsAPICallCompleted(hSteamAPICall, &bFailed);
-			META_CONPRINTF("[STEAMTOOLS] (Stats) %llu: Completed: %s (Failed: %s)\n", hSteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
+			//META_CONPRINTF("[STEAMTOOLS] (Stats) %llu: Completed: %s (Failed: %s)\n", hSteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
 
 			if (!bComplete)
 				continue;
@@ -1644,7 +1665,7 @@ static cell_t SendHTTPRequest(IPluginContext *pContext, const cell_t *params)
 	HTTPRequestCompletedContextPack contextPack;
 	contextPack.pCallbackFunction = new HTTPRequestCompletedContextFunction;
 
-	contextPack.pCallbackFunction->pContext = pContext->GetContext();
+	contextPack.pCallbackFunction->pContext = pContext;
 	contextPack.pCallbackFunction->uPluginFunction = params[2];
 
 	if (params[0] >= 3)
