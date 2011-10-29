@@ -770,6 +770,10 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 	g_SMAPI->ConPrintf("[STEAMTOOLS] Initial loading stage complete...\n");
 
+	//If this was a late load, we should try now since we wont get this until a reinit if already loaded...
+	if (late)
+		Hook_GameServerSteamAPIActivated();
+
 	return true;
 }
 
