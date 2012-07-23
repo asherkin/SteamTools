@@ -1510,11 +1510,12 @@ static cell_t GetCSteamIDForClient(IPluginContext *pContext, const cell_t *param
 	if (!pSteamID)
 		return pContext->ThrowNativeError("No SteamID found for client %d", params[1]);
 
-	char *steamIDString = new char[params[3]];
+	char *steamIDString;
+	pContext->LocalToString(params[2], &steamIDString);
+
 	int numbytes = g_pSM->Format(steamIDString, params[3], "%llu", pSteamID->ConvertToUint64());
 	numbytes++; // Format's return value doesn't include the NULL terminator.
 
-	pContext->StringToLocal(params[2], numbytes, steamIDString);
 	return numbytes;
 }
 
@@ -1527,11 +1528,12 @@ static cell_t RenderedIDToCSteamID(IPluginContext *pContext, const cell_t *param
 
 	if (steamID.IsValid())
 	{
-		char *steamIDString = new char[params[3]];
+		char *steamIDString;
+		pContext->LocalToString(params[2], &steamIDString);
+
 		int numbytes = g_pSM->Format(steamIDString, params[3], "%llu", steamID.ConvertToUint64());
 		numbytes++; // Format's return value doesn't include the NULL terminator.
 
-		pContext->StringToLocal(params[2], numbytes, steamIDString);
 		return numbytes;
 	} else {
 		return pContext->ThrowNativeError("%s is not a valid SteamID", pRenderedSteamID);
@@ -1547,11 +1549,12 @@ static cell_t CSteamIDToRenderedID(IPluginContext *pContext, const cell_t *param
 
 	if (steamID.IsValid())
 	{
-		char *pRenderedSteamID = new char[params[3]];
+		char *pRenderedSteamID;
+		pContext->LocalToString(params[2], &pRenderedSteamID);
+
 		int numbytes = g_pSM->Format(pRenderedSteamID, params[3], "%s", steamID.Render());
 		numbytes++; // Format's return value doesn't include the NULL terminator.
 
-		pContext->StringToLocal(params[2], numbytes, pRenderedSteamID);
 		return numbytes;
 	} else {
 		return pContext->ThrowNativeError("%s is not a valid SteamID", pSteamID);
@@ -1580,21 +1583,23 @@ static cell_t GetCustomSteamID(IPluginContext *pContext, const cell_t *params)
 	if (!g_CustomSteamID.IsValid())
 		return pContext->ThrowNativeError("Custom SteamID not set.");
 
-	char *steamIDString = new char[params[2]];
+	char *steamIDString;
+	pContext->LocalToString(params[1], &steamIDString);
+
 	int numbytes = g_pSM->Format(steamIDString, params[2], "%s", g_CustomSteamID.Render());
 	numbytes++; // Format's return value doesn't include the NULL terminator.
 
-	pContext->StringToLocal(params[1], numbytes, steamIDString);
 	return numbytes;
 }
 
 static cell_t GroupIDToCSteamID(IPluginContext *pContext, const cell_t *params)
 {
-	char *steamIDString = new char[params[3]];
+	char *steamIDString;
+	pContext->LocalToString(params[2], &steamIDString);
+
 	int numbytes = g_pSM->Format(steamIDString, params[3], "%llu", CSteamID(params[1], k_EUniversePublic, k_EAccountTypeClan).ConvertToUint64());
 	numbytes++; // Format's return value doesn't include the NULL terminator.
 
-	pContext->StringToLocal(params[2], numbytes, steamIDString);
 	return numbytes;
 }
 
@@ -1763,12 +1768,12 @@ static cell_t GetHTTPResponseHeaderValue(IPluginContext *pContext, const cell_t 
 	pContext->LocalToString(params[2], &pchHeaderName);
 
 	uint32 unBufferSize = params[4];
-	char *pHeaderValueBuffer = new char[unBufferSize];
+	char *pHeaderValueBuffer;
+	pContext->LocalToString(params[3], &pHeaderValueBuffer);
 
 	if (!g_pSteamHTTP->GetHTTPResponseHeaderValue(hRequest, pchHeaderName, (uint8 *)pHeaderValueBuffer, unBufferSize))
 		return pContext->ThrowNativeError("HTTPRequestHandle invalid, not yet sent, invalid buffer size or header not present");
 
-	pContext->StringToLocal(params[3], unBufferSize, pHeaderValueBuffer);
 	return 0;
 }
 
@@ -1795,12 +1800,22 @@ static cell_t GetHTTPResponseBodyData(IPluginContext *pContext, const cell_t *pa
 	HTTPRequestHandle hRequest = params[1];
 
 	uint32 unBufferSize = params[3];
-	char *pBodyDataBuffer = new char[unBufferSize];
+	char *pBodyDataBuffer;
+	pContext->LocalToString(params[2], &pBodyDataBuffer);
 
-	if (!g_pSteamHTTP->GetHTTPResponseBodyData(hRequest, (uint8 *)pBodyDataBuffer, unBufferSize))
+	uint32 unBodySize;
+	if (!g_pSteamHTTP->GetHTTPResponseBodySize(hRequest, &unBodySize))
+		return pContext->ThrowNativeError("HTTPRequestHandle invalid or not yet sent");
+
+	if (unBufferSize < unBodySize)
+		return pContext->ThrowNativeError("Buffer too small");
+
+	if (!g_pSteamHTTP->GetHTTPResponseBodyData(hRequest, (uint8 *)pBodyDataBuffer, unBodySize))
 		return pContext->ThrowNativeError("HTTPRequestHandle invalid, not yet sent or invalid buffer size");
 
-	pContext->StringToLocal(params[2], unBufferSize, pBodyDataBuffer);
+	if (unBufferSize > unBodySize)
+		pBodyDataBuffer[unBodySize] = '\0';
+
 	return 0;
 }
 
@@ -1828,6 +1843,7 @@ static cell_t WriteHTTPResponseBody(IPluginContext *pContext, const cell_t *para
 
 	g_pFullFileSystem->Write(pBodyDataBuffer, unBodySize, hDataFile);
 
+	delete pBodyDataBuffer;
 	g_pFullFileSystem->Close(hDataFile);
 
 	return 0;
