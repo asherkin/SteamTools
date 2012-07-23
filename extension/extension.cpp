@@ -117,7 +117,18 @@ bool MapLessFunc(const uint32 &in1, const uint32 &in2)
 typedef CUtlMap<uint32, CCopyableUtlVector<uint32> > SubIDMap;
 SubIDMap g_subIDs(MapLessFunc);
 
+#if 0 // Need to rework the API before exposing this.
+typedef CUtlVector<uint32> SubIDVector;
+
+struct DLCInfo {
+	uint32 uAppID;
+	SubIDVector SubIDs;
+};
+
+typedef CUtlMap<uint32, CCopyableUtlVector<DLCInfo> > DLCMap;
+#else
 typedef CUtlMap<uint32, CCopyableUtlVector<uint32> > DLCMap;
+#endif
 DLCMap g_DLCs(MapLessFunc);
 
 typedef HSteamPipe (*GetPipeFn)();
@@ -269,8 +280,10 @@ void Hook_GameServerSteamAPIShutdown(void)
 	g_GameServerSteamAPIActivatedHookID = SH_ADD_HOOK(IServerGameDLL, GameServerSteamAPIActivated, g_pServerGameDLL, SH_STATIC(Hook_GameServerSteamAPIActivated), true);
 }
 
+// This is O(n), but it's safe.
+// Switch over to a CUtlMap in the future.
 IPlugin *FindPluginByContext(IPluginContext *pContext) {
-	IPlugin *pFoundPlugin;
+	IPlugin *pFoundPlugin = NULL;
 
 	IPluginIterator *pPluginIterator = plsys->GetPluginIterator();
 	while (pPluginIterator->MorePlugins())
@@ -894,8 +907,12 @@ EBeginAuthSessionResult Hook_BeginAuthSession(const void *pAuthTicket, int cbAut
 {
 	EBeginAuthSessionResult ret = META_RESULT_ORIG_RET(EBeginAuthSessionResult);
 
-	if (DumpTickets.GetBool())
+	bool bInvalidTicket = (ret == k_EBeginAuthSessionResultInvalidTicket);
+	if (bInvalidTicket || DumpTickets.GetBool())
 	{
+		if (bInvalidTicket)
+			g_pSM->LogMessage(myself, "Dumping Steam ticket as it's invalid...");
+
 		char fileName[64];
 		g_pSM->Format(fileName, 64, "ticket_%u_%u_%u.bin", steamID.GetAccountID(), cbAuthTicket, time(NULL));
 
@@ -905,11 +922,13 @@ EBeginAuthSessionResult Hook_BeginAuthSession(const void *pAuthTicket, int cbAut
 			g_pSM->LogError(myself, "Unable to open %s for writing.", fileName);
 		} else {
 			g_pFullFileSystem->Write(pAuthTicket, cbAuthTicket, ticketFile);
-
 			g_pFullFileSystem->Close(ticketFile);
 
 			g_pSM->LogMessage(myself, "Wrote ticket to %s", fileName);
 		}
+
+		if (bInvalidTicket) // Bail out.
+			RETURN_META_VALUE(MRES_IGNORED, (EBeginAuthSessionResult)NULL);
 	}
 
 	bool error = false;
@@ -1884,7 +1903,7 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_GetHTTPResponseHeaderValue",			GetHTTPResponseHeaderValue },
 	{ "Steam_GetHTTPResponseBodySize",				GetHTTPResponseBodySize },
 	{ "Steam_GetHTTPResponseBodyData",				GetHTTPResponseBodyData },
-	{ "Steam_WriteHTTPResponseBody",			WriteHTTPResponseBody },
+	{ "Steam_WriteHTTPResponseBody",				WriteHTTPResponseBody },
 	{ "Steam_ReleaseHTTPRequest",					ReleaseHTTPRequest },
 	{ "Steam_GetHTTPDownloadProgressPercent",		GetHTTPDownloadProgressPercent },
 	{ NULL,											NULL }
