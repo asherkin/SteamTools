@@ -71,6 +71,9 @@ public Steam_StatsReceived(client)
 
 public Steam_StatsUnloaded(client)
 {
+	if (client == -1) // We'll get a Steam_StatsUnloaded after a client has left.
+		return;
+
 	HaveStats[client] = false;
 	return;
 }
