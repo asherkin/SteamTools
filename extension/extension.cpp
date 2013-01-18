@@ -785,7 +785,15 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 
 	//If this was a late load, we should try now since we wont get this until a reinit if already loaded...
 	if (late)
+	{
 		Hook_GameServerSteamAPIActivated();
+		
+		if (g_SteamLoadFailed) // Hook_GameServerSteamAPIActivated() will have called CheckInterfaces() already.
+		{
+			snprintf(error, maxlen, "One or more SteamWorks interfaces failed to be acquired.");
+			return false;
+		}
+	}
 
 	return true;
 }
