@@ -156,7 +156,6 @@ bool g_SteamServersConnected = false;
 bool g_SteamLoadFailed = false;
 
 IForward *g_pForwardGroupStatusResult = NULL;
-IForward *g_pForwardGameplayStats = NULL;
 IForward *g_pForwardReputation = NULL;
 IForward *g_pForwardRestartRequested = NULL;
 
@@ -534,23 +533,6 @@ void Hook_Think(bool finalTick)
 				FreeLastCallback(g_GameServerSteamPipe());
 				break;
 			}
-		case GSGameplayStats_t::k_iCallback:
-			{
-				GSGameplayStats_t *GameplayStats = (GSGameplayStats_t *)callbackMsg.m_pubParam;
-
-				if (GameplayStats->m_eResult == k_EResultOK)
-				{
-					g_pForwardGameplayStats->PushCell(GameplayStats->m_nRank);
-					g_pForwardGameplayStats->PushCell(GameplayStats->m_unTotalConnects);
-					g_pForwardGameplayStats->PushCell(GameplayStats->m_unTotalMinutesPlayed);
-					g_pForwardGameplayStats->Execute(NULL);
-				} else {
-					if (GameplayStats->m_eResult != k_EResultFail || (g_pSteamGameServer && g_pSteamGameServer->BLoggedOn()))
-						g_pSM->LogError(myself, "Server Gameplay Stats received with an unexpected eResult. (eResult = %d)", GameplayStats->m_eResult);
-				}
-				FreeLastCallback(g_GameServerSteamPipe());
-				break;
-			}
 		case SteamServersConnected_t::k_iCallback:
 			{
 				if (!g_SteamServersConnected)
@@ -768,7 +750,6 @@ bool SteamTools::SDK_OnLoad(char *error, size_t maxlen, bool late)
 	plsys->AddPluginsListener(this);
 
 	g_pForwardGroupStatusResult = g_pForwards->CreateForward("Steam_GroupStatusResult", ET_Ignore, 4, NULL, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
-	g_pForwardGameplayStats = g_pForwards->CreateForward("Steam_GameplayStats", ET_Ignore, 3, NULL, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardReputation = g_pForwards->CreateForward("Steam_Reputation", ET_Ignore, 6, NULL, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_pForwardRestartRequested = g_pForwards->CreateForward("Steam_RestartRequested", ET_Ignore, 0, NULL);
 
@@ -1099,7 +1080,6 @@ void SteamTools::SDK_OnUnload()
 	}
 
 	g_pForwards->ReleaseForward(g_pForwardGroupStatusResult);
-	g_pForwards->ReleaseForward(g_pForwardGameplayStats);
 	g_pForwards->ReleaseForward(g_pForwardReputation);
 
 	g_pForwards->ReleaseForward(g_pForwardRestartRequested);
@@ -1169,11 +1149,7 @@ static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
 
 static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params)
 {
-	if (!g_pSteamGameServer)
-		return 0;
-
-	g_pSteamGameServer->GetGameplayStats();
-	return 0;
+	return pContext->ThrowNativeError("RequestGameplayStats function no longer operational.");;
 }
 
 static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *params)

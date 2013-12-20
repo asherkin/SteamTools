@@ -72,7 +72,7 @@ native bool:Steam_RequestGroupStatus(client, groupAccountID);
  */
 forward Steam_GroupStatusResult(client, groupAccountID, bool:groupMember, bool:groupOfficer);
 
-
+#pragma deprecated No longer operational
 native Steam_RequestGameplayStats();
 forward Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed);
 

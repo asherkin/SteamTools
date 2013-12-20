@@ -17,11 +17,9 @@ public Plugin:myinfo = {
 };
 
 new ReplySource:Async_GroupStatus_Reply;
-new ReplySource:Async_GameplayStats_Reply;
 new ReplySource:Async_ServerReputation_Reply;
 
 new Async_GroupStatus_Client;
-new Async_GameplayStats_Client;
 new Async_ServerReputation_Client;
 
 new bool:HaveStats[MAXPLAYERS+1];
@@ -31,7 +29,6 @@ public OnPluginStart()
 	LoadTranslations("common.phrases");
 
 	RegAdminCmd("sm_groupstatus", Command_GroupStatus, ADMFLAG_ROOT, "Requests a client's membership status in a Steam Community Group.");
-	RegAdminCmd("sm_printgameplaystats", Command_GameplayStats, ADMFLAG_ROOT, "Requests a server's gameplay stats from SteamWorks.");
 	RegAdminCmd("sm_printserverreputation", Command_ServerReputation, ADMFLAG_ROOT, "Requests a server's reputation from the Steam Master Servers.");
 	RegAdminCmd("sm_forceheartbeat", Command_Heartbeat, ADMFLAG_ROOT, "Sends a heartbeat to the Steam Master Servers.");
 	RegAdminCmd("sm_printvacstatus", Command_VACStatus, ADMFLAG_ROOT, "Shows the current VAC status.");
@@ -121,17 +118,6 @@ public Action:Command_GroupStatus(client, args)
 
 	Async_GroupStatus_Client = client;
 	Async_GroupStatus_Reply = GetCmdReplySource();
-
-	return Plugin_Handled;
-}
-
-public Action:Command_GameplayStats(client, args)
-{
-	Steam_RequestGameplayStats();
-	ReplyToCommand(client, "[SM] Gameplay Stats Requested.");
-
-	Async_GameplayStats_Client = client;
-	Async_GameplayStats_Reply = GetCmdReplySource();
 
 	return Plugin_Handled;
 }
@@ -400,15 +386,6 @@ public Steam_GroupStatusResult(client, groupAccountID, bool:groupMember, bool:gr
 	ReplyToCommand(Async_GroupStatus_Client, "[SM] %N is %s in group %d.", client, groupMember?(groupOfficer?"an officer":"a member"):"not a member", groupAccountID);
 	Async_GroupStatus_Reply = SM_REPLY_TO_CONSOLE;
 	Async_GroupStatus_Client = 0;
-	return;
-}
-
-public Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed)
-{
-	SetCmdReplySource(Async_GameplayStats_Reply);
-	ReplyToCommand(Async_GameplayStats_Client, "[SM] Rank: %d. Total Connects: %d. Total Minutes Played: %d.", rank, totalConnects, totalMinutesPlayed);
-	Async_GameplayStats_Reply = SM_REPLY_TO_CONSOLE;
-	Async_GameplayStats_Client = 0;
 	return;
 }
 
