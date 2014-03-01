@@ -31,7 +31,7 @@ def ReleaseVersion():
 	major, minor, release, tag = m.groups()
 	return '.'.join([major, minor, release])
 
-filename = '-'.join(['steamtools', ReleaseVersion(), 'git' + GITVersion(), platform])
+filename = '-'.join(['steamtools', ReleaseVersion(), GITVersion(), platform])
 
 debug_build = os.environ.get('is_debug_build', False) == "1"
 
