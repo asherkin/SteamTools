@@ -12,11 +12,16 @@ elif sys.platform.startswith('win32'):
 elif sys.platform.startswith('darwin'):
 	platform = 'mac'
 
-def GITVersion():
+def GITHash():
 	p = subprocess.Popen(['git', 'rev-parse', '--short', 'HEAD'], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
 	(stdout, stderr) = p.communicate()
 	stdout = stdout.decode('UTF-8')
+	return stdout.rstrip('\r\n')
 
+def GITVersion():
+	p = subprocess.Popen(['git', 'rev-list', '--count', '--first-parent', 'HEAD'], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+	(stdout, stderr) = p.communicate()
+	stdout = stdout.decode('UTF-8')
 	return stdout.rstrip('\r\n')
 
 def ReleaseVersion():
@@ -31,7 +36,7 @@ def ReleaseVersion():
 	major, minor, release, tag = m.groups()
 	return '.'.join([major, minor, release])
 
-filename = '-'.join(['steamtools', ReleaseVersion(), GITVersion(), platform])
+filename = '-'.join(['steamtools', ReleaseVersion(), 'git' + GITVersion(), GITHash(), platform])
 
 debug_build = os.environ.get('is_debug_build', False) == "1"
 
