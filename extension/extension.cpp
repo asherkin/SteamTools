@@ -1861,6 +1861,23 @@ static cell_t GetHTTPDownloadProgressPercent(IPluginContext *pContext, const cel
 	return sp_ftoc(flPercent);
 }
 
+static cell_t SetHTTPRequestRawPostBody(IPluginContext *pContext, const cell_t *params)
+{
+	if (!g_pSteamHTTP)
+		return 0;
+
+	HTTPRequestHandle hRequest = params[1];
+	
+	char *pData;
+	pContext->LocalToString(params[2], &pData);
+	uint32 unDataSize = params[3];
+	
+	char *pContentType;
+	pContext->LocalToString(params[4], &pContentType);
+	
+	return g_pSteamHTTP->SetHTTPRequestRawPostBody(hRequest, pContentType, (uint8*)pData, unDataSize);
+}
+
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
 	{ "Steam_RequestGroupStatus",					RequestGroupStatus },
@@ -1906,5 +1923,6 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_WriteHTTPResponseBody",				WriteHTTPResponseBody },
 	{ "Steam_ReleaseHTTPRequest",					ReleaseHTTPRequest },
 	{ "Steam_GetHTTPDownloadProgressPercent",		GetHTTPDownloadProgressPercent },
+	{ "Steam_SetHTTPRequestRawPostBody",            SetHTTPRequestRawPostBody },
 	{ NULL,											NULL }
 };
