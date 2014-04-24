@@ -38,14 +38,6 @@
  * =============================================================================
  */
 
-#if !defined _WIN32 && !defined _LINUX
-#error This extension is only supported on Windows and Linux.
-#endif
-
-#if (SOURCE_ENGINE != SE_ORANGEBOXVALVE)
-#error Unsupported SDK Version
-#endif
-
 #ifdef WIN32 
 #ifdef _MSC_VER 
 #define atoui64(str) _strtoui64(str, 0, 10) 
