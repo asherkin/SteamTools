@@ -58,7 +58,7 @@ public:
 	
 	inline void SetPosition(size_t iNewOffset)
 	{
-		m_iCurrentOffset = 0;
+		m_iCurrentOffset = iNewOffset;
 	}
 
 	inline void ResetPosition()
