@@ -1725,8 +1725,7 @@ static cell_t GetHTTPResponseHeaderSize(IPluginContext *pContext, const cell_t *
 	char *pchHeaderName;
 	pContext->LocalToString(params[2], &pchHeaderName);
 
-	uint32 unResponseHeaderSize;
-	
+	uint32 unResponseHeaderSize = 0;
 	if (!g_pSteamHTTP->GetHTTPResponseHeaderSize(hRequest, pchHeaderName, &unResponseHeaderSize))
 		return -1;
 
@@ -1760,8 +1759,7 @@ static cell_t GetHTTPResponseBodySize(IPluginContext *pContext, const cell_t *pa
 
 	HTTPRequestHandle hRequest = params[1];
 
-	uint32 unBodySize;
-
+	uint32 unBodySize = 0;
 	if (!g_pSteamHTTP->GetHTTPResponseBodySize(hRequest, &unBodySize))
 		return pContext->ThrowNativeError("HTTPRequestHandle invalid or not yet sent");
 
@@ -1779,7 +1777,7 @@ static cell_t GetHTTPResponseBodyData(IPluginContext *pContext, const cell_t *pa
 	char *pBodyDataBuffer;
 	pContext->LocalToString(params[2], &pBodyDataBuffer);
 
-	uint32 unBodySize;
+	uint32 unBodySize = 0;
 	if (!g_pSteamHTTP->GetHTTPResponseBodySize(hRequest, &unBodySize))
 		return pContext->ThrowNativeError("HTTPRequestHandle invalid or not yet sent");
 
@@ -1802,11 +1800,14 @@ static cell_t WriteHTTPResponseBody(IPluginContext *pContext, const cell_t *para
 
 	HTTPRequestHandle hRequest = params[1];
 
-	uint32 unBodySize;
+	uint32 unBodySize = 0;
 	if (!g_pSteamHTTP->GetHTTPResponseBodySize(hRequest, &unBodySize))
 		return pContext->ThrowNativeError("HTTPRequestHandle invalid or not yet sent");
 
-	uint8 *pBodyDataBuffer = new uint8[unBodySize];
+	uint8 *pBodyDataBuffer = (uint8 *)calloc(unBodySize, 1);
+	if (!pBodyDataBuffer)
+		return pContext->ThrowNativeError("Failed to allocate memory for response body");
+	
 	if (!g_pSteamHTTP->GetHTTPResponseBodyData(hRequest, pBodyDataBuffer, unBodySize))
 		return pContext->ThrowNativeError("HTTPRequestHandle invalid, not yet sent or invalid buffer size");
 
@@ -1819,7 +1820,7 @@ static cell_t WriteHTTPResponseBody(IPluginContext *pContext, const cell_t *para
 
 	g_pFullFileSystem->Write(pBodyDataBuffer, unBodySize, hDataFile);
 
-	delete pBodyDataBuffer;
+	free(pBodyDataBuffer);
 	g_pFullFileSystem->Close(hDataFile);
 
 	return 0;
