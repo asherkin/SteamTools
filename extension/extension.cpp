@@ -64,7 +64,6 @@
 SteamTools g_SteamTools;
 SMEXT_LINK(&g_SteamTools);
 
-SH_DECL_HOOK1_void(IServerGameDLL, Think, SH_NOATTRIB, 0, bool);
 SH_DECL_HOOK0_void(IServerGameDLL, GameServerSteamAPIActivated, SH_NOATTRIB, 0);
 SH_DECL_HOOK0_void(IServerGameDLL, GameServerSteamAPIShutdown, SH_NOATTRIB, 0);
 
@@ -87,7 +86,6 @@ ISteamGameServerStats *g_pSteamGameServerStats = NULL;
 ISteamHTTP *g_pSteamHTTP = NULL;
 
 CSteamID g_CustomSteamID = k_steamIDNil;
-SteamAPICall_t g_SteamAPICall = k_uAPICallInvalid;
 CUtlVector<SteamAPICall_t> g_RequestUserStatsSteamAPICalls;
 CUtlVector<SteamAPICall_t> g_HTTPRequestSteamAPICalls;
 
@@ -139,7 +137,6 @@ GetUserFn g_GameServerSteamUser;
 GetCallbackFn GetCallback;
 FreeLastCallbackFn FreeLastCallback;
 
-int g_ThinkHookID = 0;
 int g_GameServerSteamAPIActivatedHookID = 0;
 int g_GameServerSteamAPIShutdownHookID = 0;
 
@@ -164,10 +161,10 @@ IForward *g_pForwardClientUnloadedStats = NULL;
 IForward *g_pForwardLoaded = NULL;
 IForward *g_pForwardShutdown = NULL;
 
-//extern "C" void SteamAPIWarningMessageHook(int hpipe, const char *message)
-//{
-//	g_pSM->LogError(myself, "SteamAPIWarning: %s", message);
-//}
+extern "C" void SteamAPIWarningMessageHook(int hpipe, const char *message)
+{
+	g_pSM->LogError(myself, "SteamAPIWarning: %s", message);
+}
 
 void Hook_GameServerSteamAPIActivated(void)
 {
@@ -206,7 +203,7 @@ void Hook_GameServerSteamAPIActivated(void)
 	g_BeginAuthSessionHookID = SH_ADD_HOOK(ISteamGameServer, BeginAuthSession, g_pSteamGameServer, SH_STATIC(Hook_BeginAuthSession), true);
 	g_EndAuthSessionHookID = SH_ADD_HOOK(ISteamGameServer, EndAuthSession, g_pSteamGameServer, SH_STATIC(Hook_EndAuthSession), true);
 
-	//g_pSteamUtils->SetWarningMessageHook(SteamAPIWarningMessageHook);
+	g_pSteamUtils->SetWarningMessageHook(SteamAPIWarningMessageHook);
 
 	g_SMAPI->ConPrintf("[STEAMTOOLS] Loading complete.\n");
 
@@ -221,8 +218,6 @@ void Hook_GameServerSteamAPIActivated(void)
 		g_pForwardSteamServersDisconnected->Execute(NULL);
 	}
 
-	g_ThinkHookID = SH_ADD_HOOK(IServerGameDLL, Think, g_pServerGameDLL, SH_STATIC(Hook_Think), true);
-
 	if (g_GameServerSteamAPIActivatedHookID != 0)
 	{
 		SH_REMOVE_HOOK_ID(g_GameServerSteamAPIActivatedHookID);
@@ -233,12 +228,6 @@ void Hook_GameServerSteamAPIActivated(void)
 
 void Hook_GameServerSteamAPIShutdown(void)
 {
-	if (g_ThinkHookID != 0)
-	{
-		SH_REMOVE_HOOK_ID(g_ThinkHookID);
-		g_ThinkHookID = 0;
-	}
-
 	g_GameServerSteamPipe = NULL;
 	g_GameServerSteamUser = NULL;
 
@@ -298,197 +287,14 @@ IPlugin *FindPluginByContext(IPluginContext *pContext) {
 	return pFoundPlugin;
 }
 
-void Hook_Think(bool finalTick)
-{
-	if (g_pSteamUtils)
-	{
-		if (g_SteamAPICall != k_uAPICallInvalid)
-		{
-			bool bFailed = false;
-			bool bComplete = g_pSteamUtils->IsAPICallCompleted(g_SteamAPICall, &bFailed);
-			//META_CONPRINTF("[STEAMTOOLS] (Rep) %llu: Completed: %s (Failed: %s)\n", g_SteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
-
-			if (!bComplete)
-				goto end_of_rep_handler;
-
-			GSReputation_t Reputation;
-			g_pSteamUtils->GetAPICallResult(g_SteamAPICall, &Reputation, sizeof(Reputation), Reputation.k_iCallback, &bFailed);
-
-			if (bFailed)
-			{
-				ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(g_SteamAPICall);
-				g_pSM->LogError(myself, "Server Reputation failed. (ESteamAPICallFailure = %d)", failureReason);
-
-				g_SteamAPICall = k_uAPICallInvalid;
-				goto end_of_rep_handler;
-			}
-
-			if (Reputation.m_eResult != k_EResultOK)
-			{
-				g_pSM->LogError(myself, "Server Reputation received with an unexpected eResult. (eResult = %d)", Reputation.m_eResult);
-
-				g_SteamAPICall = k_uAPICallInvalid;
-				goto end_of_rep_handler;
-			}
-
-			g_pForwardReputation->PushCell(Reputation.m_unReputationScore);
-			g_pForwardReputation->PushCell(Reputation.m_bBanned);
-			g_pForwardReputation->PushCell(Reputation.m_unBannedIP);
-			g_pForwardReputation->PushCell(Reputation.m_usBannedPort);
-			g_pForwardReputation->PushCell(Reputation.m_ulBannedGameID);
-			g_pForwardReputation->PushCell(Reputation.m_unBanExpires);
-			g_pForwardReputation->Execute(NULL);
-
-			g_SteamAPICall = k_uAPICallInvalid;
-		}
-		end_of_rep_handler:
-
-		for (int i = g_HTTPRequestSteamAPICalls.Count() - 1; i >= 0; i--)
-		{
-			SteamAPICall_t hSteamAPICall = g_HTTPRequestSteamAPICalls.Element(i);
-
-			bool bFailed = false;
-			bool bComplete = g_pSteamUtils->IsAPICallCompleted(hSteamAPICall, &bFailed);
-			//META_CONPRINTF("[STEAMTOOLS] (HTTP) %llu: Completed: %s (Failed: %s)\n", hSteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
-
-			if (!bComplete)
-				continue;
-
-			HTTPRequestCompleted_t HTTPRequestCompleted;
-			g_pSteamUtils->GetAPICallResult(hSteamAPICall, &HTTPRequestCompleted, sizeof(HTTPRequestCompleted), HTTPRequestCompleted.k_iCallback, &bFailed);
-
-			if (bFailed)
-			{
-				ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(hSteamAPICall);
-				g_pSM->LogError(myself, "HTTP request failed. (ESteamAPICallFailure = %d)", failureReason);
-
-				g_HTTPRequestSteamAPICalls.Remove(i);
-				continue;
-			}
-
-			if (HTTPRequestCompleted.m_ulContextValue == 0)
-			{
-				g_pSM->LogError(myself, "Unable to find plugin in HTTPRequestCompleted handler. (No context value set)");
-
-				g_HTTPRequestSteamAPICalls.Remove(i);
-				continue;
-			}
-
-			HTTPRequestCompletedContextPack contextPack;
-			contextPack.ulContextValue = HTTPRequestCompleted.m_ulContextValue;
-
-			IPlugin *pPlugin = FindPluginByContext(contextPack.pCallbackFunction->pContext);
-
-			if (!pPlugin)
-			{
-				g_pSM->LogError(myself, "Unable to find plugin in HTTPRequestCompleted handler. (No plugin found matching context)");
-
-				g_HTTPRequestSteamAPICalls.Remove(i);
-				continue;
-			}
-
-			IPluginFunction *pFunction = pPlugin->GetBaseContext()->GetFunctionById(contextPack.pCallbackFunction->uPluginFunction);
-
-			if (!pFunction || !pFunction->IsRunnable())
-			{
-				if (!pFunction)
-					g_pSM->LogError(myself, "Unable to find plugin in HTTPRequestCompleted handler. (Function not found in plugin)");
-
-				g_HTTPRequestSteamAPICalls.Remove(i);
-				continue;
-			}
-
-			pFunction->PushCell(HTTPRequestCompleted.m_hRequest);
-			pFunction->PushCell(HTTPRequestCompleted.m_bRequestSuccessful);
-			pFunction->PushCell(HTTPRequestCompleted.m_eStatusCode);
-
-			if (contextPack.pCallbackFunction->bHasContext)
-				pFunction->PushCell(contextPack.iPluginContextValue);
-
-			pFunction->Execute(NULL);
-
-			delete contextPack.pCallbackFunction;
-
-			g_HTTPRequestSteamAPICalls.Remove(i);
-		}
-
-		for (int i = g_RequestUserStatsSteamAPICalls.Count() - 1; i >= 0; i--)
-		{
-			SteamAPICall_t hSteamAPICall = g_RequestUserStatsSteamAPICalls.Element(i);
-
-			bool bFailed = false;
-			bool bComplete = g_pSteamUtils->IsAPICallCompleted(hSteamAPICall, &bFailed);
-			//META_CONPRINTF("[STEAMTOOLS] (Stats) %llu: Completed: %s (Failed: %s)\n", hSteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
-
-			if (!bComplete)
-				continue;
-
-			GSStatsReceived_t GSStatsReceived;
-			g_pSteamUtils->GetAPICallResult(hSteamAPICall, &GSStatsReceived, sizeof(GSStatsReceived), GSStatsReceived.k_iCallback, &bFailed);
-
-			if (bFailed)
-			{
-				ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(hSteamAPICall);
-				g_pSM->LogError(myself, "Getting stats failed. (ESteamAPICallFailure = %d)", failureReason);
-
-				g_RequestUserStatsSteamAPICalls.Remove(i);
-				continue;
-			}
-
-			if (GSStatsReceived.m_eResult != k_EResultOK)
-			{
-				if (GSStatsReceived.m_eResult == k_EResultFail)
-					g_pSM->LogError(myself, "Getting stats for user %s failed, backend reported that the user has no stats.", GSStatsReceived.m_steamIDUser.Render());
-				else
-					g_pSM->LogError(myself, "Stats for user %s received with an unexpected eResult. (eResult = %d)", GSStatsReceived.m_steamIDUser.Render(), GSStatsReceived.m_eResult);
-
-				g_RequestUserStatsSteamAPICalls.Remove(i);
-				continue;
-			}
-
-			int x;
-			for (x = 1; x <= playerhelpers->GetMaxClients(); ++x)
-			{
-				IGamePlayer *player = playerhelpers->GetGamePlayer(x);
-				if (!player)
-					continue;
-
-				if (player->IsFakeClient())
-					continue;
-
-				if (!player->IsAuthorized())
-					continue;
-
-				edict_t *playerEdict = player->GetEdict();
-				if (!playerEdict || playerEdict->IsFree())
-					continue;
-
-				if (*engine->GetClientSteamID(playerEdict) == GSStatsReceived.m_steamIDUser)
-					break;
-			}
-
-			if (x > playerhelpers->GetMaxClients())
-			{
-				x = -1;
-				g_CustomSteamID = GSStatsReceived.m_steamIDUser;
-			}
-
-			g_pForwardClientReceivedStats->PushCell(x);
-			g_pForwardClientReceivedStats->Execute(NULL);
-
-			g_CustomSteamID = k_steamIDNil;
-
-			g_RequestUserStatsSteamAPICalls.Remove(i);
-		}
-	}
-}
-
 DETOUR_DECL_STATIC2(DetourGetCallback, bool, HSteamPipe, hSteamPipe, CallbackMsg_t *, pCallbackMsg)
 {
 	bool ret = DETOUR_STATIC_CALL(DetourGetCallback)(hSteamPipe, pCallbackMsg);
 	if (!ret) {
 		return false;
 	}
+
+	//g_SMAPI->ConPrintf("[STEAMTOOLS] Callback %d ...\n", pCallbackMsg->m_iCallback);
 
 	switch (pCallbackMsg->m_iCallback)
 	{
@@ -597,6 +403,145 @@ DETOUR_DECL_STATIC2(DetourGetCallback, bool, HSteamPipe, hSteamPipe, CallbackMsg
 			FreeLastCallback(g_GameServerSteamPipe());
 			return false;
 		}
+	case SteamAPICallCompleted_t::k_iCallback:
+		{
+			if (!g_pSteamUtils) {
+				break;
+			}
+
+			SteamAPICallCompleted_t *APICallCompleted = (SteamAPICallCompleted_t *)pCallbackMsg->m_pubParam;
+			SteamAPICall_t hSteamAPICall = APICallCompleted->m_hAsyncCall;
+
+			if (g_RequestUserStatsSteamAPICalls.FindAndRemove(hSteamAPICall)) {
+				do {
+					bool bFailed = false;
+					bool bComplete = g_pSteamUtils->IsAPICallCompleted(hSteamAPICall, &bFailed);
+					//META_CONPRINTF("[STEAMTOOLS] (Stats) %llu: Completed: %s (Failed: %s)\n", hSteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
+
+					if (!bComplete) {
+						g_pSM->LogError(myself, "Stats request was not complete!");
+						g_RequestUserStatsSteamAPICalls.AddToTail(hSteamAPICall);
+						break;
+					}
+
+					GSStatsReceived_t GSStatsReceived;
+					g_pSteamUtils->GetAPICallResult(hSteamAPICall, &GSStatsReceived, sizeof(GSStatsReceived), GSStatsReceived.k_iCallback, &bFailed);
+
+					if (bFailed)
+					{
+						ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(hSteamAPICall);
+						g_pSM->LogError(myself, "Getting stats failed. (ESteamAPICallFailure = %d)", failureReason);
+						break;
+					}
+
+					if (GSStatsReceived.m_eResult != k_EResultOK)
+					{
+						if (GSStatsReceived.m_eResult == k_EResultFail)
+							g_pSM->LogError(myself, "Getting stats for user %s failed, backend reported that the user has no stats.", GSStatsReceived.m_steamIDUser.Render());
+						else
+							g_pSM->LogError(myself, "Stats for user %s received with an unexpected eResult. (eResult = %d)", GSStatsReceived.m_steamIDUser.Render(), GSStatsReceived.m_eResult);
+						break;
+					}
+
+					int x;
+					for (x = 1; x <= playerhelpers->GetMaxClients(); ++x)
+					{
+						IGamePlayer *player = playerhelpers->GetGamePlayer(x);
+						if (!player)
+							continue;
+
+						if (player->IsFakeClient())
+							continue;
+
+						if (!player->IsAuthorized())
+							continue;
+
+						edict_t *playerEdict = player->GetEdict();
+						if (!playerEdict || playerEdict->IsFree())
+							continue;
+
+						if (*engine->GetClientSteamID(playerEdict) == GSStatsReceived.m_steamIDUser)
+							break;
+					}
+
+					if (x > playerhelpers->GetMaxClients())
+					{
+						x = -1;
+						g_CustomSteamID = GSStatsReceived.m_steamIDUser;
+					}
+
+					g_pForwardClientReceivedStats->PushCell(x);
+					g_pForwardClientReceivedStats->Execute(NULL);
+
+					g_CustomSteamID = k_steamIDNil;
+				} while (0);
+			} else if (g_HTTPRequestSteamAPICalls.FindAndRemove(hSteamAPICall)) {
+				do {
+					bool bFailed = false;
+					bool bComplete = g_pSteamUtils->IsAPICallCompleted(hSteamAPICall, &bFailed);
+					//META_CONPRINTF("[STEAMTOOLS] (HTTP) %llu: Completed: %s (Failed: %s)\n", hSteamAPICall, bComplete?"true":"false", bFailed?"true":"false");
+
+					if (!bComplete) {
+						g_pSM->LogError(myself, "HTTP request was not complete!");
+						g_HTTPRequestSteamAPICalls.AddToTail(hSteamAPICall);
+						break;
+					}
+
+					HTTPRequestCompleted_t HTTPRequestCompleted;
+					g_pSteamUtils->GetAPICallResult(hSteamAPICall, &HTTPRequestCompleted, sizeof(HTTPRequestCompleted), HTTPRequestCompleted.k_iCallback, &bFailed);
+
+					if (bFailed)
+					{
+						ESteamAPICallFailure failureReason = g_pSteamUtils->GetAPICallFailureReason(hSteamAPICall);
+						g_pSM->LogError(myself, "HTTP request failed. (ESteamAPICallFailure = %d)", failureReason);
+						break;
+					}
+
+					if (HTTPRequestCompleted.m_ulContextValue == 0)
+					{
+						g_pSM->LogError(myself, "Unable to find plugin in HTTPRequestCompleted handler. (No context value set)");
+						break;
+					}
+
+					HTTPRequestCompletedContextPack contextPack;
+					contextPack.ulContextValue = HTTPRequestCompleted.m_ulContextValue;
+
+					IPlugin *pPlugin = FindPluginByContext(contextPack.pCallbackFunction->pContext);
+
+					if (!pPlugin)
+					{
+						g_pSM->LogError(myself, "Unable to find plugin in HTTPRequestCompleted handler. (No plugin found matching context)");
+						break;
+					}
+
+					IPluginFunction *pFunction = pPlugin->GetBaseContext()->GetFunctionById(contextPack.pCallbackFunction->uPluginFunction);
+
+					if (!pFunction || !pFunction->IsRunnable())
+					{
+						if (!pFunction)
+							g_pSM->LogError(myself, "Unable to find plugin in HTTPRequestCompleted handler. (Function not found in plugin)");
+
+						break;
+					}
+
+					pFunction->PushCell(HTTPRequestCompleted.m_hRequest);
+					pFunction->PushCell(HTTPRequestCompleted.m_bRequestSuccessful);
+					pFunction->PushCell(HTTPRequestCompleted.m_eStatusCode);
+
+					if (contextPack.pCallbackFunction->bHasContext)
+						pFunction->PushCell(contextPack.iPluginContextValue);
+
+					pFunction->Execute(NULL);
+
+					delete contextPack.pCallbackFunction;
+				} while (0);
+			} else {
+				break;
+			}
+
+			FreeLastCallback(g_GameServerSteamPipe());
+			return false;
+		}
 	}
 
 	return true;
@@ -632,12 +577,6 @@ bool CheckInterfaces()
 
 	if (g_SteamLoadFailed)
 	{
-		if (g_ThinkHookID != 0)
-		{
-			SH_REMOVE_HOOK_ID(g_ThinkHookID);
-			g_ThinkHookID = 0;
-		}
-
 		return false;
 	} else {
 		return true;
@@ -1058,11 +997,6 @@ void SteamTools::SDK_OnUnload()
 {
 	plsys->RemovePluginsListener(this);
 
-	if (g_ThinkHookID != 0)
-	{
-		SH_REMOVE_HOOK_ID(g_ThinkHookID);
-		g_ThinkHookID = 0;
-	}
 	if (g_GameServerSteamAPIActivatedHookID != 0)
 	{
 		SH_REMOVE_HOOK_ID(g_GameServerSteamAPIActivatedHookID);
@@ -1159,21 +1093,12 @@ static cell_t RequestGroupStatus(IPluginContext *pContext, const cell_t *params)
 
 static cell_t RequestGameplayStats(IPluginContext *pContext, const cell_t *params)
 {
-	return pContext->ThrowNativeError("RequestGameplayStats function no longer operational.");;
+	return pContext->ThrowNativeError("RequestGameplayStats function no longer operational.");
 }
 
 static cell_t RequestServerReputation(IPluginContext *pContext, const cell_t *params)
 {
-	if (!g_pSteamGameServer)
-		return 0;
-
-	if (g_SteamAPICall == k_uAPICallInvalid)
-	{
-		g_SteamAPICall = g_pSteamGameServer->GetServerReputation();
-		return true;
-	} else {
-		return false;
-	}
+	return pContext->ThrowNativeError("RequestServerReputation function no longer operational.");
 }
 
 static cell_t ForceHeartbeat(IPluginContext *pContext, const cell_t *params)
