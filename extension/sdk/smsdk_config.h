@@ -39,10 +39,10 @@
 
 /* Basic information exposed publicly */
 #define SMEXT_CONF_NAME			"SteamTools"
-#define SMEXT_CONF_DESCRIPTION	"SteamWorks for SourceMod."
+#define SMEXT_CONF_DESCRIPTION	"SteamWorks for SourceMod"
 #define SMEXT_CONF_VERSION		SM_FULL_VERSION
 #define SMEXT_CONF_AUTHOR		"Asher \"asherkin\" Baker"
-#define SMEXT_CONF_URL			"http://limetech.org/"
+#define SMEXT_CONF_URL			"https://limetech.io/"
 #define SMEXT_CONF_LOGTAG		"STEAMTOOLS"
 #define SMEXT_CONF_LICENSE		"GPLv3"
 #define SMEXT_CONF_DATESTRING	__DATE__
