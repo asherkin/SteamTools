@@ -11,10 +11,8 @@ for i in SM.sdkInfo:
 	compiler['CXXINCLUDES'].append(os.path.join(AMBuild.sourceFolder, 'extension'))
 	compiler['CXXINCLUDES'].append(os.path.join(AMBuild.sourceFolder, 'extension', 'sdk'))
 
-	compiler['CXXINCLUDES'].append(os.path.join(AMBuild.cache['SOURCEMOD17'], 'public'))
-	compiler['CXXINCLUDES'].append(os.path.join(AMBuild.cache['SOURCEMOD17'], 'public', 'sourcepawn'))
-	compiler['CXXINCLUDES'].append(os.path.join(AMBuild.cache['SOURCEMOD17'], 'public', 'asm'))
-	compiler['CXXINCLUDES'].append(os.path.join(AMBuild.cache['SOURCEMOD17'], 'public', 'CDetour'))
+	compiler['CXXINCLUDES'].append(os.path.join(AMBuild.cache['SOURCEMOD16'], 'public'))
+	compiler['CXXINCLUDES'].append(os.path.join(AMBuild.cache['SOURCEMOD16'], 'public', 'sourcepawn'))
 
 	compiler['CXXINCLUDES'].append(os.path.join(AMBuild.sourceFolder, 'open-steamworks', 'Open Steamworks'))
 
@@ -29,10 +27,12 @@ for i in SM.sdkInfo:
 	binary = Cpp.LibraryBuilder(name, AMBuild, extension, compiler)
 	SM.PreSetupHL2Job(extension, binary, i)
 
-	binary.AddSourceFiles(os.path.join('extension', 'sdk'), ['smsdk_ext.cpp'])
-	binary.AddSourceFiles(os.path.join(AMBuild.cache['SOURCEMOD17'], 'public', 'CDetour'), ['detours.cpp'])
-	binary.AddSourceFiles(os.path.join(AMBuild.cache['SOURCEMOD17'], 'public', 'asm'), ['asm.c'])
-	binary.AddSourceFiles('extension', ['extension.cpp'])
+	binary.AddSourceFiles('extension', [
+		'extension.cpp',
+		'sdk/smsdk_ext.cpp',
+		'asm/asm.c',
+		'CDetour/detours.cpp',
+	])
 
 	SM.PostSetupHL2Job(extension, binary, i)
 	SM.AutoVersion('extension', binary)

@@ -60,7 +60,7 @@ class SM:
 
 			#Detect variables
 			envvars = { 'MMSOURCE19':    'mmsource-1.9',
-			            'SOURCEMOD17':   'sourcemod-1.7',
+			            'SOURCEMOD16':   'sourcemod-1.7',
 			            'HL2SDKCSS':     'hl2sdk-css',
 			            'HL2SDKOBVALVE': 'hl2sdk-tf2',
 			            'HL2SDKL4D':     'hl2sdk-l4d',
@@ -182,7 +182,7 @@ class SM:
 				self.compiler.AddToListVar('POSTLINKFLAGS', 'uuid.lib')
 				self.compiler.AddToListVar('POSTLINKFLAGS', 'odbc32.lib')
 				self.compiler.AddToListVar('POSTLINKFLAGS', 'odbccp32.lib')
-				self.compiler.AddToListVar('POSTLINKFLAGS', 'legacy_stdio_definitions.lib')
+				#self.compiler.AddToListVar('POSTLINKFLAGS', 'legacy_stdio_definitions.lib')
 
 			#Optimization
 			if AMBuild.options.opt == '1':

@@ -50,7 +50,7 @@
 
 #include "extension.h"
 
-#include "detours.h"
+#include "CDetour/detours.h"
 
 #include "filesystem.h"
 #include "tickets.h"
@@ -482,10 +482,6 @@ void Hook_Think(bool finalTick)
 		}
 	}
 }
-
-#define DETOUR_DECL_STATIC2(name, ret, p1type, p1name, p2type, p2name) \
-ret (*name##_Actual)(p1type, p2type) = NULL; \
-ret name(p1type p1name, p2type p2name)
 
 DETOUR_DECL_STATIC2(DetourGetCallback, bool, HSteamPipe, hSteamPipe, CallbackMsg_t *, pCallbackMsg)
 {
