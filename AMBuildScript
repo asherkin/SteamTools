@@ -60,7 +60,7 @@ class SM:
 
 			#Detect variables
 			envvars = { 'MMSOURCE19':    'mmsource-1.9',
-			            'SOURCEMOD14':   'sourcemod-1.7',
+			            'SOURCEMOD17':   'sourcemod-1.7',
 			            'HL2SDKCSS':     'hl2sdk-css',
 			            'HL2SDKOBVALVE': 'hl2sdk-tf2',
 			            'HL2SDKL4D':     'hl2sdk-l4d',
