@@ -1814,6 +1814,40 @@ static cell_t SetHTTPRequestRawPostBody(IPluginContext *pContext, const cell_t *
 	return g_pSteamHTTP->SetHTTPRequestRawPostBody(hRequest, pContentType, (uint8*)pData, unDataSize);
 }
 
+static cell_t SetHTTPRequestRawPostBodyFile(IPluginContext *pContext, const cell_t *params)
+{
+       if (!g_pSteamHTTP)
+               return 0;
+
+       HTTPRequestHandle hRequest = params[1];
+
+       char *pchFilePath;
+       pContext->LocalToString(params[2], &pchFilePath);
+
+       char *pContentType;
+       pContext->LocalToString(params[3], &pContentType);
+
+       FileHandle_t hDataFile = g_pFullFileSystem->Open(pchFilePath, "rb", "MOD");
+       if (!hDataFile)
+               return pContext->ThrowNativeError("Unable to open %s for reading", pchFilePath);
+
+       uint32 unDataSize = g_pFullFileSystem->Size(hDataFile);
+       uint8 *pData = new uint8[unDataSize];
+       g_pFullFileSystem->Read((void*)pData, unDataSize, hDataFile);
+       pData[unDataSize] = 0; // null terminator
+
+       g_pFullFileSystem->Close(hDataFile);
+
+       bool result = g_pSteamHTTP->SetHTTPRequestRawPostBody(hRequest, pContentType, pData, unDataSize);
+
+       if (result == false)
+               g_pSM->LogError(myself, "Failed to insert %s into POST body.", pchFilePath);
+
+       delete pData;
+
+       return result;
+}
+
 sp_nativeinfo_t g_ExtensionNatives[] =
 {
 	{ "Steam_RequestGroupStatus",					RequestGroupStatus },
@@ -1859,6 +1893,7 @@ sp_nativeinfo_t g_ExtensionNatives[] =
 	{ "Steam_WriteHTTPResponseBody",				WriteHTTPResponseBody },
 	{ "Steam_ReleaseHTTPRequest",					ReleaseHTTPRequest },
 	{ "Steam_GetHTTPDownloadProgressPercent",		GetHTTPDownloadProgressPercent },
-	{ "Steam_SetHTTPRequestRawPostBody",            SetHTTPRequestRawPostBody },
+	{ "Steam_SetHTTPRequestRawPostBody",			SetHTTPRequestRawPostBody },
+	{ "Steam_SetHTTPRequestRawPostBodyFile",		SetHTTPRequestRawPostBodyFile },
 	{ NULL,											NULL }
 };
