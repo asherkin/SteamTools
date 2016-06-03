@@ -1834,7 +1834,6 @@ static cell_t SetHTTPRequestRawPostBodyFile(IPluginContext *pContext, const cell
        uint32 unDataSize = g_pFullFileSystem->Size(hDataFile);
        uint8 *pData = new uint8[unDataSize];
        g_pFullFileSystem->Read((void*)pData, unDataSize, hDataFile);
-       pData[unDataSize] = 0; // null terminator
 
        g_pFullFileSystem->Close(hDataFile);
 
@@ -1843,7 +1842,7 @@ static cell_t SetHTTPRequestRawPostBodyFile(IPluginContext *pContext, const cell
        if (result == false)
                g_pSM->LogError(myself, "Failed to insert %s into POST body.", pchFilePath);
 
-       delete pData;
+       delete[] pData;
 
        return result;
 }
