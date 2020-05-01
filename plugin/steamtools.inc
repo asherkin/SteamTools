@@ -11,8 +11,8 @@
  *
  * @noreturn
  */
-forward Steam_FullyLoaded();
-forward Steam_Shutdown();
+forward void Steam_FullyLoaded();
+forward void Steam_Shutdown();
 
 
 /**
@@ -20,7 +20,7 @@ forward Steam_Shutdown();
  *
  * @return A bool representing the current VAC status.
  */
-native bool:Steam_IsVACEnabled();
+native bool Steam_IsVACEnabled();
 
 /**
  * Gets the server's external IP address, as reported by Steam.
@@ -30,7 +30,7 @@ native bool:Steam_IsVACEnabled();
  *
  * @noreturn
  */
-native Steam_GetPublicIP(octets[4]);
+native void Steam_GetPublicIP(int octets[4]);
 
 
 /**
@@ -40,7 +40,7 @@ native Steam_GetPublicIP(octets[4]);
  * @return Plugin_Continue to continue normal operation or Plugin_Handled
  *         to block the regular console message.
  */
-forward Action:Steam_RestartRequested();
+forward Action Steam_RestartRequested();
 
 
 /**
@@ -53,7 +53,7 @@ forward Action:Steam_RestartRequested();
  * @return A bool representing whether or not the request was sent to
  *         Steam.
  */
-native bool:Steam_RequestGroupStatus(client, groupAccountID);
+native bool Steam_RequestGroupStatus(int client, int groupAccountID);
 
 /**
  * Called when a response to a group status request is recieved.
@@ -70,15 +70,15 @@ native bool:Steam_RequestGroupStatus(client, groupAccountID);
  *
  * @noreturn
  */
-forward Steam_GroupStatusResult(client, groupAccountID, bool:groupMember, bool:groupOfficer);
+forward void Steam_GroupStatusResult(int client, int groupAccountID, bool groupMember, bool groupOfficer);
 
 #pragma deprecated No longer operational
-native Steam_RequestGameplayStats();
-forward Steam_GameplayStats(rank, totalConnects, totalMinutesPlayed);
+native void Steam_RequestGameplayStats();
+forward void Steam_GameplayStats(int rank, int totalConnects, int totalMinutesPlayed);
 
 #pragma deprecated No longer operational
-native Steam_RequestServerReputation();
-forward Steam_Reputation(reputationScore, bool:banned, bannedIP, bannedPort, bannedGameID, banExpires);
+native void Steam_RequestServerReputation();
+forward void Steam_Reputation(int reputationScore, bool banned, int bannedIP, int bannedPort, int bannedGameID, int banExpires);
 
 
 /**
@@ -87,7 +87,7 @@ forward Steam_Reputation(reputationScore, bool:banned, bannedIP, bannedPort, ban
  *
  * @return Steam connection state.
  */
-native bool:Steam_IsConnected();
+native bool Steam_IsConnected();
 
 /**
  * Fired upon a successfull connection to Steam.
@@ -95,7 +95,7 @@ native bool:Steam_IsConnected();
  *
  * @noreturn
  */
-forward Steam_SteamServersConnected();
+forward void Steam_SteamServersConnected();
 
 /**
  * Fired upon disconnection from Steam.
@@ -107,7 +107,7 @@ forward Steam_SteamServersConnected();
  *
  * @noreturn
  */
-forward Steam_SteamServersDisconnected();
+forward void Steam_SteamServersDisconnected();
 
 /**
  * Sets an entry in the server's list of rules. This list is used to
@@ -121,7 +121,7 @@ forward Steam_SteamServersDisconnected();
  *
  * @noreturn
  */
-native Steam_SetRule(const String:key[], const String:value[]);
+native void Steam_SetRule(const char[] key, const char[] value);
 
 /**
  * Clears the server's list of rules. This list is used to build the
@@ -130,40 +130,40 @@ native Steam_SetRule(const String:key[], const String:value[]);
  *
  * @noreturn
  */
-native Steam_ClearRules();
+native void Steam_ClearRules();
 
 
-native Steam_ForceHeartbeat();
+native void Steam_ForceHeartbeat();
 
 #pragma deprecated No longer operational
-native bool:Steam_AddMasterServer(const String:serverAddress[]);
+native bool Steam_AddMasterServer(const char[] serverAddress);
 #pragma deprecated No longer operational
-native bool:Steam_RemoveMasterServer(const String:serverAddress[]);
+native bool Steam_RemoveMasterServer(const char[] serverAddress);
 #pragma deprecated No longer operational
-native Steam_GetNumMasterServers();
+native int Steam_GetNumMasterServers();
 #pragma deprecated No longer operational
-native Steam_GetMasterServerAddress(server, String:serverAddress[], maxlength);
+native void Steam_GetMasterServerAddress(int server, char[] serverAddress, int maxlength);
 
-native Steam_SetGameDescription(String:gameDescription[]);
+native void Steam_SetGameDescription(char[] gameDescription);
 
-native Steam_RequestStats(client);
-forward Steam_StatsReceived(client);
-forward Steam_StatsUnloaded(client);
-native Steam_GetStat(client, const String:statName[]);
-native Float:Steam_GetStatFloat(client, const String:statName[]);
-native bool:Steam_IsAchieved(client, const String:achievementName[]);
+native void Steam_RequestStats(int client);
+forward void Steam_StatsReceived(int client);
+forward void Steam_StatsUnloaded(int client);
+native int Steam_GetStat(int client, const char[] statName);
+native float Steam_GetStatFloat(int client, const char[] statName);
+native bool Steam_IsAchieved(int client, const char[] achievementName);
 
 
-native Steam_GetNumClientSubscriptions(client);
-native Steam_GetClientSubscription(client, index);
+native int Steam_GetNumClientSubscriptions(int client);
+native int Steam_GetClientSubscription(int client, int index);
 
-native Steam_GetNumClientDLCs(client);
-native Steam_GetClientDLC(client, index);
+native int Steam_GetNumClientDLCs(int client);
+native int Steam_GetClientDLC(int client, int index);
 
-stock bool:Steam_CheckClientSubscription(client, subid)
+stock bool Steam_CheckClientSubscription(int client, int subid)
 {
-	new subCount = Steam_GetNumClientSubscriptions(client);
-	for (new x = 0; x < subCount; x++)
+	int subCount = Steam_GetNumClientSubscriptions(client);
+	for (int x = 0; x < subCount; x++)
 	{
 		if (Steam_GetClientSubscription(client, x) == subid)
 		{
@@ -174,10 +174,10 @@ stock bool:Steam_CheckClientSubscription(client, subid)
 	return false;
 }
 
-stock bool:Steam_CheckClientDLC(client, appid)
+stock bool Steam_CheckClientDLC(int client, int appid)
 {
-	new subCount = Steam_GetNumClientDLCs(client);
-	for (new x = 0; x < subCount; x++)
+	int subCount = Steam_GetNumClientDLCs(client);
+	for (int x = 0; x < subCount; x++)
 	{
 		if (Steam_GetClientDLC(client, x) == appid)
 		{
@@ -188,16 +188,16 @@ stock bool:Steam_CheckClientDLC(client, appid)
 	return false;
 }
 
-native Steam_GetCSteamIDForClient(client, String:steamID[], maxlength);
+native void Steam_GetCSteamIDForClient(int client, char[] steamID, int maxlength);
 
-native bool:Steam_SetCustomSteamID(const String:renderedID[]);
-native bool:Steam_GetCustomSteamID(String:renderedID[], maxlength);
+native bool Steam_SetCustomSteamID(const char[] renderedID);
+native bool Steam_GetCustomSteamID(char[] renderedID, int maxlength);
 
-native Steam_RenderedIDToCSteamID(const String:renderedID[], String:steamID[], maxlength);
-native Steam_CSteamIDToRenderedID(const String:steamID[], String:renderedID[], maxlength);
+native void Steam_RenderedIDToCSteamID(const char[] renderedID, char[] steamID, int maxlength);
+native void Steam_CSteamIDToRenderedID(const char[] steamID, char[] renderedID, int maxlength);
 
-native Steam_GroupIDToCSteamID(groupID, String:steamID[], maxlength);
-native Steam_CSteamIDToGroupID(const String:steamID[]);
+native void Steam_GroupIDToCSteamID(int groupID, char[] steamID, int maxlength);
+native void Steam_CSteamIDToGroupID(const char[] steamID);
 
 enum HTTPRequestHandle
 {
@@ -267,31 +267,47 @@ enum HTTPStatusCode
 	HTTPStatusCode_HTTPVersionNotSupported =		505,
 };
 
-funcenum HTTPRequestComplete
+typeset HTTPRequestComplete
 {
-	public(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful, HTTPStatusCode:statusCode),
-	public(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful, HTTPStatusCode:statusCode, any:contextData),
+	function void(HTTPRequestHandle HTTPRequest, bool requestSuccessful, HTTPStatusCode statusCode);
+	function void(HTTPRequestHandle HTTPRequest, bool requestSuccessful, HTTPStatusCode statusCode, any contextData);
 };
 
-native HTTPRequestHandle:Steam_CreateHTTPRequest(HTTPMethod:HTTPRequestMethod, const String:absoluteURL[]);
-native Steam_SetHTTPRequestNetworkActivityTimeout(HTTPRequestHandle:HTTPRequest, timeoutSeconds);
-native Steam_SetHTTPRequestHeaderValue(HTTPRequestHandle:HTTPRequest, const String:headerName[], const String:headerValue[]);
-native Steam_SetHTTPRequestGetOrPostParameter(HTTPRequestHandle:HTTPRequest, const String:paramName[], const String:paramValue[]);
-native bool:Steam_SendHTTPRequest(HTTPRequestHandle:HTTPRequest, HTTPRequestComplete:callbackFunction, any:contextData = 0);
-native Steam_DeferHTTPRequest(HTTPRequestHandle:HTTPRequest);
-native Steam_PrioritizeHTTPRequest(HTTPRequestHandle:HTTPRequest);
-native Steam_GetHTTPResponseHeaderSize(HTTPRequestHandle:HTTPRequest, const String:headerName[]);
-native Steam_GetHTTPResponseHeaderValue(HTTPRequestHandle:HTTPRequest, const String:headerName[], String:headerValueBuffer[], bufferSize);
-native Steam_GetHTTPResponseBodySize(HTTPRequestHandle:HTTPRequest);
-native Steam_GetHTTPResponseBodyData(HTTPRequestHandle:HTTPRequest, String:bodyDataBuffer[], bufferSize);
-native Steam_WriteHTTPResponseBody(HTTPRequestHandle:HTTPRequest, const String:filePath[]);
-native Steam_ReleaseHTTPRequest(HTTPRequestHandle:HTTPRequest);
-native Float:Steam_GetHTTPDownloadProgressPercent(HTTPRequestHandle:HTTPRequest);
-native bool:Steam_SetHTTPRequestRawPostBody(HTTPRequestHandle:HTTPRequest, const String:data[], dataLength, const String:contentType[]="text/plain");
-native bool:Steam_SetHTTPRequestRawPostBodyFile(HTTPRequestHandle:HTTPRequest, const String:filePath[], const String:contentType[]="text/plain");
+native HTTPRequestHandle Steam_CreateHTTPRequest(HTTPMethod HTTPRequestMethod, const char[] absoluteURL);
+native void Steam_SetHTTPRequestNetworkActivityTimeout(HTTPRequestHandle HTTPRequest, int timeoutSeconds);
+native void Steam_SetHTTPRequestHeaderValue(HTTPRequestHandle HTTPRequest, const char[] headerName, const char[] headerValue);
+native void Steam_SetHTTPRequestGetOrPostParameter(HTTPRequestHandle HTTPRequest, const char[] paramName, const char[] paramValue);
+native bool Steam_SendHTTPRequest(HTTPRequestHandle HTTPRequest, HTTPRequestComplete callbackFunction, any contextData = 0);
+native void Steam_DeferHTTPRequest(HTTPRequestHandle HTTPRequest);
+native void Steam_PrioritizeHTTPRequest(HTTPRequestHandle HTTPRequest);
+native int Steam_GetHTTPResponseHeaderSize(HTTPRequestHandle HTTPRequest, const char[] headerName);
+native void Steam_GetHTTPResponseHeaderValue(HTTPRequestHandle HTTPRequest, const char[] headerName, char[] headerValueBuffer, int bufferSize);
+native int Steam_GetHTTPResponseBodySize(HTTPRequestHandle HTTPRequest);
+native void Steam_GetHTTPResponseBodyData(HTTPRequestHandle HTTPRequest, char[] bodyDataBuffer, int bufferSize);
+native void Steam_WriteHTTPResponseBody(HTTPRequestHandle HTTPRequest, const char[] filePath);
+native void Steam_ReleaseHTTPRequest(HTTPRequestHandle HTTPRequest);
+native float Steam_GetHTTPDownloadProgressPercent(HTTPRequestHandle HTTPRequest);
+native bool Steam_SetHTTPRequestRawPostBody(HTTPRequestHandle HTTPRequest, const char[] data, int dataLength, const char[] contentType="text/plain");
+native bool Steam_SetHTTPRequestRawPostBodyFile(HTTPRequestHandle HTTPRequest, const char[] filePath, const char[] contentType="text/plain");
+
+public Extension __ext_SteamTools =
+{
+	name = "SteamTools",
+	file = "steamtools.ext",
+#if defined AUTOLOAD_EXTENSIONS
+	autoload = 1,
+#else
+	autoload = 0,
+#endif
+#if defined REQUIRE_EXTENSIONS
+	required = 1,
+#else
+	required = 0,
+#endif
+}
 
 #if !defined REQUIRE_EXTENSIONS
-public __ext_SteamTools_SetNTVOptional()
+public void __ext_SteamTools_SetNTVOptional()
 {
 	MarkNativeAsOptional("Steam_IsVACEnabled");
 	MarkNativeAsOptional("Steam_GetPublicIP");
@@ -334,19 +350,3 @@ public __ext_SteamTools_SetNTVOptional()
 	MarkNativeAsOptional("Steam_SetHTTPRequestRawPostBodyFile");
 }
 #endif
-
-public Extension:__ext_SteamTools =
-{
-	name = "SteamTools",
-	file = "steamtools.ext",
-#if defined AUTOLOAD_EXTENSIONS
-	autoload = 1,
-#else
-	autoload = 0,
-#endif
-#if defined REQUIRE_EXTENSIONS
-	required = 1,
-#else
-	required = 0,
-#endif
-}

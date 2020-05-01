@@ -1,4 +1,5 @@
 #pragma semicolon 1
+#pragma newdecls required
 
 #include <sourcemod>
 
@@ -6,9 +7,9 @@
 #define REQUIRE_EXTENSIONS
 #include <steamtools>
 
-#define PLUGIN_VERSION "0.8.3"
+#define PLUGIN_VERSION "0.8.4"
 
-public Plugin:myinfo = {
+public Plugin myinfo = {
 	name        = "SteamTools Tester",
 	author      = "Asher Baker (asherkin)",
 	description = "Plugin for testing the SteamTools extension.",
@@ -16,15 +17,15 @@ public Plugin:myinfo = {
 	url         = "http://limetech.org/"
 };
 
-new ReplySource:Async_GroupStatus_Reply;
-new ReplySource:Async_ServerReputation_Reply;
+ReplySource Async_GroupStatus_Reply;
+ReplySource Async_ServerReputation_Reply;
 
-new Async_GroupStatus_Client;
-new Async_ServerReputation_Client;
+int Async_GroupStatus_Client;
+int Async_ServerReputation_Client;
 
-new bool:HaveStats[MAXPLAYERS+1];
+bool HaveStats[MAXPLAYERS+1];
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	LoadTranslations("common.phrases");
 
@@ -47,7 +48,7 @@ public OnPluginStart()
 	RegAdminCmd("sm_printdlc", Command_PrintDLC, ADMFLAG_ROOT, "Shows the App IDs of the DLCs that are associated with the client's game.");
 }
 
-public OnClientAuthorized(client, const String:auth[])
+public void OnClientAuthorized(int client, const char[] auth)
 {
 	if (!IsFakeClient(client))
 	{
@@ -55,27 +56,26 @@ public OnClientAuthorized(client, const String:auth[])
 	}
 }
 
-public OnClientDisconnect(client)
+public void OnClientDisconnect(int client)
 {
 	HaveStats[client] = false;
 }
 
-public Steam_StatsReceived(client)
+public void Steam_StatsReceived(int client)
 {
 	HaveStats[client] = true;
-	return;
 }
 
-public Steam_StatsUnloaded(client)
+public void Steam_StatsUnloaded(int client)
 {
-	if (client == -1) // We'll get a Steam_StatsUnloaded after a client has left.
-		return;
-
-	HaveStats[client] = false;
-	return;
+	// We'll get a Steam_StatsUnloaded after a client has left.
+	if (client != -1)
+	{
+		HaveStats[client] = false;
+	}
 }
 
-public Action:Command_GroupStatus(client, args)
+public Action Command_GroupStatus(int client, int args)
 {
 	if (args != 2)
 	{
@@ -83,16 +83,18 @@ public Action:Command_GroupStatus(client, args)
 		return Plugin_Handled;
 	}
 
-	new String:arg1[32];
-	new String:arg2[32];
+	char arg1[32];
+	char arg2[32];
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
- 
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
- 
+
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+
+	bool tn_is_ml;
+
 	if ((target_count = ProcessTargetString(
 			arg1,
 			client,
@@ -107,9 +109,9 @@ public Action:Command_GroupStatus(client, args)
 		return Plugin_Handled;
 	}
 
-	new bool:didLastRequestWork = false;
- 
-	for (new i = 0; i < target_count; i++)
+	bool didLastRequestWork = false;
+
+	for (int i = 0; i < target_count; i++)
 	{
 		didLastRequestWork = Steam_RequestGroupStatus(target_list[i], StringToInt(arg2));
 	}
@@ -122,7 +124,7 @@ public Action:Command_GroupStatus(client, args)
 	return Plugin_Handled;
 }
 
-public Action:Command_ServerReputation(client, args)
+public Action Command_ServerReputation(int client, int args)
 {
 	Steam_RequestServerReputation();
 	ReplyToCommand(client, "[SM] Server Reputation Requested.");
@@ -133,34 +135,34 @@ public Action:Command_ServerReputation(client, args)
 	return Plugin_Handled;
 }
 
-public Action:Command_Heartbeat(client, args)
+public Action Command_Heartbeat(int client, int args)
 {
 	Steam_ForceHeartbeat();
 	ReplyToCommand(client, "[SM] Heartbeat Sent.");
 	return Plugin_Handled;
 }
 
-public Action:Command_VACStatus(client, args)
+public Action Command_VACStatus(int client, int args)
 {
 	ReplyToCommand(client, "[SM] VAC is %s.", Steam_IsVACEnabled()?"active":"not active");
 	return Plugin_Handled;
 }
 
-public Action:Command_ConnectionStatus(client, args)
+public Action Command_ConnectionStatus(int client, int args)
 {
 	ReplyToCommand(client, "[SM] %s to Steam servers.", Steam_IsConnected()?"Connected":"Not connected");
 	return Plugin_Handled;
 }
 
-public Action:Command_PrintIP(client, args)
+public Action Command_PrintIP(int client, int args)
 {
-	new octets[4];
+	int octets[4];
 	Steam_GetPublicIP(octets);
 	ReplyToCommand(client, "[SM] Server IP Address: %d.%d.%d.%d", octets[0], octets[1], octets[2], octets[3]);
 	return Plugin_Handled;
 }
 
-public Action:Command_SetRule(client, args)
+public Action Command_SetRule(int client, int args)
 {
 	if (args != 2)
 	{
@@ -168,19 +170,19 @@ public Action:Command_SetRule(client, args)
 		return Plugin_Handled;
 	}
 
-	new String:arg1[32];
-	new String:arg2[32];
+	char arg1[32];
+	char arg2[32];
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
- 
+
 	Steam_SetRule(arg1, arg2);
 	ReplyToCommand(client, "[SM] Rule Set.");
 
 	return Plugin_Handled;
 }
 
-public Action:Command_ClearRules(client, args)
+public Action Command_ClearRules(int client, int args)
 {
 	Steam_ClearRules();
 	ReplyToCommand(client, "[SM] Rules Cleared.");
@@ -188,7 +190,7 @@ public Action:Command_ClearRules(client, args)
 	return Plugin_Handled;
 }
 
-public Action:Command_SetGameDescription(client, args)
+public Action Command_SetGameDescription(int client, int args)
 {
 	if (args != 1)
 	{
@@ -196,17 +198,17 @@ public Action:Command_SetGameDescription(client, args)
 		return Plugin_Handled;
 	}
 
-	new String:arg1[32];
+	char arg1[32];
 
 	GetCmdArg(1, arg1, sizeof(arg1));
- 
+
 	Steam_SetGameDescription(arg1);
 	ReplyToCommand(client, "[SM] Game Description Set.");
 
 	return Plugin_Handled;
 }
 
-public Action:Command_PrintStat(client, args)
+public Action Command_PrintStat(int client, int args)
 {
 	if (args != 2)
 	{
@@ -214,16 +216,18 @@ public Action:Command_PrintStat(client, args)
 		return Plugin_Handled;
 	}
 
-	new String:arg1[32];
-	new String:arg2[32];
+	char arg1[32];
+	char arg2[32];
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
- 
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
- 
+
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+
+	bool tn_is_ml;
+
 	if ((target_count = ProcessTargetString(
 			arg1,
 			client,
@@ -238,18 +242,22 @@ public Action:Command_PrintStat(client, args)
 		return Plugin_Handled;
 	}
 
-	for (new i = 0; i < target_count; i++)
+	for (int i = 0; i < target_count; i++)
 	{
 		if (HaveStats[client])
+		{
 			ReplyToCommand(client, "[SM] Stat '%s' = %d for %N.", arg2, Steam_GetStat(target_list[i], arg2), target_list[i]);
+		}
 		else
+		{
 			ReplyToCommand(client, "[SM] Stats for %N not received yet.", target_list[i]);
+		}
 	}
 
 	return Plugin_Handled;
 }
 
-public Action:Command_PrintAchievement(client, args)
+public Action Command_PrintAchievement(int client, int args)
 {
 	if (args != 2)
 	{
@@ -257,16 +265,18 @@ public Action:Command_PrintAchievement(client, args)
 		return Plugin_Handled;
 	}
 
-	new String:arg1[32];
-	new String:arg2[32];
+	char arg1[32];
+	char arg2[32];
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
- 
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
- 
+
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+
+	bool tn_is_ml;
+
 	if ((target_count = ProcessTargetString(
 			arg1,
 			client,
@@ -281,18 +291,22 @@ public Action:Command_PrintAchievement(client, args)
 		return Plugin_Handled;
 	}
 
-	for (new i = 0; i < target_count; i++)
+	for (int i = 0; i < target_count; i++)
 	{
 		if (HaveStats[client])
+		{
 			ReplyToCommand(client, "[SM] %N %s earned achievement %s.", target_list[i], Steam_IsAchieved(target_list[i], arg2)?"has":"has not", arg2);
+		}
 		else
+		{
 			ReplyToCommand(client, "[SM] Stats for %N not received yet.", target_list[i]);
+		}
 	}
 
 	return Plugin_Handled;
 }
 
-public Action:Command_PrintSubscription(client, args)
+public Action Command_PrintSubscription(int client, int args)
 {
 	if (args != 1)
 	{
@@ -300,16 +314,18 @@ public Action:Command_PrintSubscription(client, args)
 		return Plugin_Handled;
 	}
 
-	new String:arg1[32];
-	new String:arg2[32];
+	char arg1[32];
+	char arg2[32];
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
- 
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
- 
+
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+
+	bool tn_is_ml;
+
 	if ((target_count = ProcessTargetString(
 			arg1,
 			client,
@@ -324,10 +340,10 @@ public Action:Command_PrintSubscription(client, args)
 		return Plugin_Handled;
 	}
 
-	for (new i = 0; i < target_count; i++)
+	for (int i = 0; i < target_count; i++)
 	{
-		new subCount = Steam_GetNumClientSubscriptions(target_list[i]);
-		for (new x = 0; x < subCount; x++)
+		int subCount = Steam_GetNumClientSubscriptions(target_list[i]);
+		for (int x = 0; x < subCount; x++)
 		{
 			ReplyToCommand(client, "[SM] Client purchased this game as part of subscription %d.", Steam_GetClientSubscription(target_list[i], x));
 		}
@@ -336,7 +352,7 @@ public Action:Command_PrintSubscription(client, args)
 	return Plugin_Handled;
 }
 
-public Action:Command_PrintDLC(client, args)
+public Action Command_PrintDLC(int client, int args)
 {
 	if (args != 1)
 	{
@@ -344,16 +360,18 @@ public Action:Command_PrintDLC(client, args)
 		return Plugin_Handled;
 	}
 
-	new String:arg1[32];
-	new String:arg2[32];
+	char arg1[32];
+	char arg2[32];
 
 	GetCmdArg(1, arg1, sizeof(arg1));
 	GetCmdArg(2, arg2, sizeof(arg2));
- 
-	new String:target_name[MAX_TARGET_LENGTH];
-	new target_list[MAXPLAYERS], target_count;
-	new bool:tn_is_ml;
- 
+
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS];
+	int target_count;
+
+	bool tn_is_ml;
+
 	if ((target_count = ProcessTargetString(
 			arg1,
 			client,
@@ -368,10 +386,10 @@ public Action:Command_PrintDLC(client, args)
 		return Plugin_Handled;
 	}
 
-	for (new i = 0; i < target_count; i++)
+	for (int i = 0; i < target_count; i++)
 	{
-		new subCount = Steam_GetNumClientDLCs(target_list[i]);
-		for (new x = 0; x < subCount; x++)
+		int subCount = Steam_GetNumClientDLCs(target_list[i]);
+		for (int x = 0; x < subCount; x++)
 		{
 			ReplyToCommand(client, "[SM] Client has DLC %d.", Steam_GetClientDLC(target_list[i], x));
 		}
@@ -380,38 +398,34 @@ public Action:Command_PrintDLC(client, args)
 	return Plugin_Handled;
 }
 
-public Steam_GroupStatusResult(client, groupAccountID, bool:groupMember, bool:groupOfficer)
+public void Steam_GroupStatusResult(int client, int groupAccountID, bool groupMember, bool groupOfficer)
 {
 	SetCmdReplySource(Async_GroupStatus_Reply);
 	ReplyToCommand(Async_GroupStatus_Client, "[SM] %N is %s in group %d.", client, groupMember?(groupOfficer?"an officer":"a member"):"not a member", groupAccountID);
 	Async_GroupStatus_Reply = SM_REPLY_TO_CONSOLE;
 	Async_GroupStatus_Client = 0;
-	return;
 }
 
-public Steam_Reputation(reputationScore, bool:banned, bannedIP, bannedPort, bannedGameID, banExpires)
+public void Steam_Reputation(int reputationScore, bool banned, int bannedIP, int bannedPort, int bannedGameID, int banExpires)
 {
 	SetCmdReplySource(Async_ServerReputation_Reply);
 	ReplyToCommand(Async_ServerReputation_Client, "[SM] Reputation Score: %d. Banned: %s.", reputationScore, banned?"true":"false");
 	Async_ServerReputation_Reply = SM_REPLY_TO_CONSOLE;
 	Async_ServerReputation_Client = 0;
-	return;
 }
 
-public Action:Steam_RestartRequested()
+public Action Steam_RestartRequested()
 {
 	PrintToServer("[SM] Server needs to be restarted due to an update.");
 	return Plugin_Continue;
 }
 
-public Steam_SteamServersConnected()
+public void Steam_SteamServersConnected()
 {
 	PrintToChatAll("[SM] Connection to Steam servers established.");
-	return;
 }
 
-public Steam_SteamServersDisconnected()
+public void Steam_SteamServersDisconnected()
 {
 	PrintToChatAll("[SM] Lost connection to Steam servers.");
-	return;
 }
