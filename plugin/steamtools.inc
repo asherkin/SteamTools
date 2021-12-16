@@ -65,7 +65,7 @@ native bool:Steam_RequestGroupStatus(client, groupAccountID);
  *                       this agaist the ID you are expecting.
  * @param groupMember    Whether or not the client is a member in the
  *                       specified group.
- * @param groupMember    Whether or not the client is an officer in the
+ * @param groupOfficer    Whether or not the client is an officer in the
  *                       specified group.
  *
  * @noreturn
